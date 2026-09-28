@@ -53,7 +53,26 @@
     return out;
   }
 
-  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder };
+  function normalizedWeights(games) {
+    const total = games.reduce((s, g) => s + Math.max(0, g.weight), 0);
+    const out = {};
+    games.forEach((g) => { out[g.id] = total > 0 ? Math.max(0, g.weight) / total : 0; });
+    return out;
+  }
+
+  // weights renormalized over rated games
+  function playerRating(person, games, wide) {
+    let sum = 0, wsum = 0;
+    games.forEach((g) => {
+      const elo = rankToElo(g, person.ratings && person.ratings[g.id], wide);
+      if (elo == null || !(g.weight > 0)) return;
+      sum += g.weight * elo;
+      wsum += g.weight;
+    });
+    return wsum > 0 ? sum / wsum : null;
+  }
+
+  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TeamMaker = api;
 })(typeof window !== 'undefined' ? window : globalThis);
