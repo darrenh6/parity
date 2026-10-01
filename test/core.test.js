@@ -41,3 +41,39 @@ test('weight 0 ignores a game; unrated players return null', () => {
   assert.strictEqual(T.playerRating({ ratings: {} }, games, false), null);
 });
 
+function pool(n, rng) {
+  const tiers = lol.tiers;
+  const roles = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
+  return Array.from({ length: n }, (_, i) => ({
+    name: `P${i}`, roles: { lol: [roles[i % 5]] },
+    ratings: { lol: { tier: tiers[Math.floor(rng() * tiers.length)], division: 1 + Math.floor(rng() * 4) } },
+  }));
+}
+const seeded = (s) => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+
+test('teams are balanced on ELO with sizes differing by at most one', () => {
+  const { teams, stats } = T.buildTeams(pool(11, seeded(7)), { games, teams: 2, roleWeight: 0 });
+  assert.strictEqual(teams[0].players.length + teams[1].players.length, 11);
+  assert.ok(Math.abs(teams[0].players.length - teams[1].players.length) <= 1);
+  assert.ok(stats.spread < 25, `spread ${stats.spread}`);
+});
+
+test('supports more than two teams and rejects bad input', () => {
+  const { teams } = T.buildTeams(pool(15, seeded(5)), { games, teams: 3 });
+  assert.deepStrictEqual(teams.map((t) => t.players.length), [5, 5, 5]);
+  assert.throws(() => T.buildTeams(pool(2, seeded(5)), { games, teams: 3 }));
+});
+
+test('same seed gives same teams', () => {
+  const players = pool(10, seeded(9));
+  const names = (r) => r.teams.map((t) => t.players.map((p) => p.name).sort().join());
+  const o = { games, seed: 4 };
+  assert.deepStrictEqual(names(T.buildTeams(players, o)), names(T.buildTeams(players, o)));
+});
+
+test('30 players across 3 teams runs quickly', () => {
+  const t0 = Date.now();
+  T.buildTeams(pool(30, seeded(2)), { games, teams: 3 });
+  assert.ok(Date.now() - t0 < 5000);
+});
+
