@@ -1,4 +1,5 @@
 (function (root) {
+  const Copy = typeof module !== 'undefined' && module.exports ? require('./text.js') : root.TeamMakerText;
   // same range for every game so top tiers compare
   const BASE = 800;
   const SPAN = 1600;
@@ -101,8 +102,8 @@
   function buildTeams(players, opts) {
     const { games, wide = false, teams: k = 2, seed = 1 } = opts;
     const n = players.length;
-    if (k < 2) throw new Error('Choose at least 2 teams.');
-    if (n < k) throw new Error(`Add at least ${k} players to make ${k} teams (you have ${n}).`);
+    if (k < 2) throw new Error(Copy.plain('err.minTeams'));
+    if (n < k) throw new Error(Copy.plain('err.needPlayers', { k, n }));
     const restarts = opts.restarts || (n > 20 ? 12 : 30);
 
     const meanOf = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);

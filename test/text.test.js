@@ -1,0 +1,22 @@
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const Text = require('../text.js');
+const COPY = require('../copy.js');
+
+test('fills in values and escapes them for the page', () => {
+  assert.strictEqual(Text.plain('game.countsAria', { game: 'Valorant' }), 'How much Valorant counts');
+});
+
+test('text that cannot be filled in is left visible and unknown keys show their name', () => {
+  assert.strictEqual(Text.plain('team.title'), 'Team {i}');
+  assert.strictEqual(Text.plain('no.such.key'), 'no.such.key');
+});
+
+test('every key used by the code exists, and every key in copy.js is used', () => {
+  const src = ['app.js', 'core.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')).join('\n');
+  const used = new Set([...src.matchAll(/'((?:app|how|games|game|wide|addgame|players|rank|role|settings|teams|auto|priority|checks|make|verdict|result|team|compare|warn|info|advice|err)\.[\w.]+)'/g)].map((m) => m[1]));
+  used.forEach((k) => assert.ok(k in COPY, `missing from copy.js: ${k}`));
+  Object.keys(COPY).forEach((k) => assert.ok(used.has(k), `unused in code: ${k}`));
+});
