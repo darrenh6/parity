@@ -3,12 +3,24 @@
   const C = window.TeamMakerText;
   const t = (key, vars) => C.t(key, vars);
   const attr = (key, vars) => esc(C.plain(key, vars));
+  const KEY = 'teammaker.v2';
 
-  let state = fresh();
+  let state = load();
   let result = null, error = '';
 
   function fresh() {
     return { games: T.defaultGames(), players: [], wide: false, teams: 2, seed: 0 };
+  }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && Array.isArray(s.games) && Array.isArray(s.players)) { const st = { ...fresh(), ...s };
+        return st; }
+    } catch (e) { /* corrupt storage, start fresh */ }
+    return fresh();
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage can be blocked */ }
   }
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -146,7 +158,7 @@
     if (isInput && act === 'weight') {
       g.weight = Number(el.value) / 100;
       document.querySelector(`[data-wl="${g.id}"]`).textContent = pct(g) + '%';
-      return undefined;
+      return save();
     }
     if (isInput) return;
 
@@ -172,6 +184,7 @@
       } else return;
     } else return;
 
+    save();
     render();
   }
 
