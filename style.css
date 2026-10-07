@@ -34,13 +34,23 @@ td.num { font-variant-numeric: tabular-nums; }
 .team h3 { margin: 0 0 6px; display: flex; justify-content: space-between; font-size: 18px; }
 .team ul { list-style: none; margin: 0; padding: 0; }
 .team li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 1px 9px; }
 .stats { margin-top: 12px; color: var(--muted); }
 .stats b { color: var(--good); }
 .error { color: var(--bad); }
+.addgame { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.addgame input[type=text] { flex: 1 1 180px; }
 label.toggle { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+button.chip { cursor: pointer; padding: 1px 9px; color: var(--muted); font-weight: 400; background: #fff; border: 1px solid var(--line); }
+button.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+td .chips { margin-top: 4px; max-width: 220px; white-space: normal; }
+
 .wrow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .wrow input { flex: 1; }
 .wrow b { width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+
+details summary { cursor: pointer; color: var(--muted); }
 
 .step { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 14px; align-items: center; justify-content: center; margin-right: 6px; }
 .hint { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 2px; }
@@ -48,6 +58,13 @@ label.toggle { display: inline-flex; gap: 8px; align-items: center; cursor: poin
 .field input[type=number] { margin-left: 8px; }
 .field-toggle { display: flex; align-items: flex-start; margin: 14px 0; }
 .field-toggle input { margin-top: 4px; }
+details.how, details.addgame-box { margin-bottom: 22px; background: var(--card); border-radius: 6px; padding: 12px 20px; box-shadow: 0 6px 22px rgba(31, 58, 115, .10); }
+details.addgame-box { margin: 14px 0 0; padding: 8px 14px; box-shadow: none; background: var(--field); border: 1px solid var(--line); }
+details summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+.addgame { display: grid; gap: 10px; margin-top: 10px; }
+.addgame label { display: grid; gap: 4px; font-size: 13px; }
+.addgame label.toggle { display: flex; }
+.addgame input[type=text], .addgame input[type=number] { width: 100%; max-width: 480px; }
 .empty { padding: 18px; border: 2px dashed var(--line); border-radius: 6px; color: var(--muted); }
 .verdict { padding: 10px 14px; border-radius: 5px; margin: 12px 0 0; border-left: 6px solid var(--line); background: var(--field); }
 .verdict.good { border-left-color: var(--good); color: var(--text); }

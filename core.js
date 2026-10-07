@@ -12,13 +12,19 @@
     return [
       { id: 'lol', name: 'League of Legends', weight: third, divisions: 4,
         tiers: ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Emerald', 'Diamond'],
-        apex: ['Master', 'Grandmaster', 'Challenger'] },
+        apex: ['Master', 'Grandmaster', 'Challenger'],
+        roles: [{ name: 'Top', slots: 1 }, { name: 'Jungle', slots: 1 }, { name: 'Mid', slots: 1 },
+                { name: 'Bot', slots: 1 }, { name: 'Support', slots: 1 }] },
       { id: 'ow', name: 'Overwatch', weight: third, divisions: 5,
         tiers: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'],
-        apex: ['Master', 'Grandmaster', 'Champion'] },
+        apex: ['Master', 'Grandmaster', 'Champion'],
+        roles: [{ name: 'Tank', slots: 1 }, { name: 'DPS', slots: 2 }, { name: 'Support', slots: 2 }] },
       { id: 'val', name: 'Valorant', weight: third, divisions: 3,
         tiers: ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant'],
-        apex: ['Immortal', 'Radiant'] },
+        apex: ['Immortal', 'Radiant'],
+        // flex is usually a second duelist
+        roles: [{ name: 'Duelist', slots: 1 }, { name: 'Initiator', slots: 1 }, { name: 'Controller', slots: 1 },
+                { name: 'Sentinel', slots: 1 }, { name: 'Flex', slots: 1, alsoFilledBy: ['Duelist'] }] },
     ];
   }
 

@@ -5,6 +5,21 @@
   const attr = (key, vars) => esc(C.plain(key, vars));
   const KEY = 'teammaker.v2';
 
+  // first role listed is the primary
+  const SAMPLE = [
+    ['Alex', { lol: ['Gold', 2], ow: ['Silver', 3], val: ['Silver', 1] }, { lol: ['Top', 'Mid'], ow: ['Support'], val: ['Sentinel'] }, []],
+    ['Blair', { lol: ['Platinum', 3], ow: ['Gold', 1], val: ['Gold', 2] }, { lol: ['Jungle'], ow: ['DPS', 'Tank'], val: ['Initiator', 'Controller'] }, []],
+    ['Casey', { lol: ['Diamond', 4], ow: ['Platinum', 2], val: ['Platinum', 3] }, { lol: ['Mid'], ow: ['DPS'], val: ['Duelist'] }, []],
+    ['Drew', { lol: ['Emerald', 2], ow: ['Gold', 4], val: ['Diamond', 1] }, { lol: ['Bot'], ow: ['Tank'], val: ['Duelist', 'Flex'] }, []],
+    ['Eli', { lol: ['Silver', 1], ow: ['Platinum', 5], val: ['Gold', 3] }, { lol: ['Support', 'Bot'], ow: ['Support'], val: ['Controller'] }, []],
+    ['Fran', { lol: ['Emerald', 4], ow: ['Diamond', 3], val: ['Ascendant', 3] }, { lol: ['Jungle', 'Top'], ow: ['DPS'], val: ['Initiator'] }, []],
+    ['Gale', { lol: ['Bronze', 1], ow: ['Gold', 2] }, { lol: ['Top'], ow: ['Support', 'Tank'] }, ['val']],
+    ['Hollis', { lol: ['Platinum', 1], ow: ['Diamond', 5], val: ['Platinum', 1] }, { lol: ['Mid', 'Support'], ow: ['DPS'], val: ['Controller'] }, []],
+    ['Indy', { lol: ['Gold', 4] }, { lol: ['Support'] }, ['ow', 'val']],
+    ['Jules', { lol: ['Diamond', 1], ow: ['Platinum', 4], val: ['Diamond', 2] }, { lol: ['Bot', 'Mid'], ow: ['Tank', 'DPS'], val: ['Duelist', 'Initiator'] }, []],
+    ['Kai', { ow: ['Gold', 3], val: ['Platinum', 2] }, { ow: ['DPS'], val: ['Duelist'] }, ['lol']],
+  ];
+
   let state = load();
   let result = null, error = '';
 
@@ -50,9 +65,19 @@
     return `<select data-act="rank" data-p="${player.id}" data-g="${g.id}">${html}</select>`;
   }
 
+  function roleChips(player, g) {
+    if (!(g.roles || []).length) return '';
+    const mine = (player.roles && player.roles[g.id]) || [];
+    return `<div class="chips">${g.roles.map((r) => {
+      const i = mine.indexOf(r.name);
+      return `<button class="chip${i >= 0 ? ' on' : ''}" data-act="role" data-p="${player.id}" data-g="${g.id}" data-r="${esc(r.name)}" title="${attr('role.addTip')}">${esc(r.name)}</button>`;
+    }).join('')}</div>`;
+  }
+
   const ladderText = (g) => (state.wide && g.apex.length
     ? C.plain('game.ladderApex', { low: g.tiers[0], high: g.tiers[g.tiers.length - 1], apex: g.apex.join(', ') })
     : C.plain('game.ladder', { low: g.tiers[0], high: g.tiers[g.tiers.length - 1] }));
+  const rolesText = (g) => (g.roles || []).map((r) => (r.slots > 1 ? `${r.slots} ${r.name}` : r.name)).join(', ');
 
   function render() {
     const app = document.getElementById('app');
@@ -72,6 +97,8 @@
               <div class="muted">${t('game.countsLabel')}</div>
               <div class="wrow"><input type="range" min="0" max="100" step="1" value="${pct(g)}" ${''} data-act="weight" data-g="${g.id}" aria-label="${attr('game.countsAria', { game: g.name })}">
                 <b data-wl="${g.id}">${pct(g)}%</b></div>
+              ${(g.roles || []).length ? `
+                <div class="muted">${t('game.needs', { roles: rolesText(g) })}</div>` : `<div class="muted">${t('game.noRoles')}</div>`}
               <div class="muted">${t('game.ranks', { ladder: ladderText(g) })}</div>
             </div>`).join('')}
         </div>
@@ -80,6 +107,17 @@
           <span><b>${t('wide.title')}</b> ${t('wide.examples')}
           <span class="hint">${t('wide.hint')}</span></span></label>
 
+        <details class="addgame-box">
+          <summary>${t('addgame.summary')}</summary>
+          <form class="addgame" data-act="addgame">
+            <label>${t('addgame.name')} <input type="text" name="name" placeholder="${attr('addgame.namePh')}" required></label>
+            <label>${t('addgame.tiers')} <input type="text" name="tiers" placeholder="${attr('addgame.tiersPh')}" required></label>
+            <label>${t('addgame.apex')} <input type="text" name="apex" placeholder="${attr('addgame.apexPh')}"></label>
+            <label>${t('addgame.roles')} <input type="text" name="roles" placeholder="${attr('addgame.rolesPh')}"></label>
+            <label>${t('addgame.divs')} <input type="number" name="divs" min="1" max="9" value="3"></label>
+            <button class="primary">${t('addgame.button')}</button>
+          </form>
+        </details>
       </section>
 
       <section>
@@ -92,7 +130,7 @@
               const r = T.playerRating(p, state.games, state.wide);
               return `<tr>
                 <td><input type="text" value="${esc(p.name)}" data-act="name" data-p="${p.id}" aria-label="${attr('players.nameAria')}"></td>
-                ${state.games.map((g) => `<td>${rankSelect(p, g)}</td>`).join('')}
+                ${state.games.map((g) => `<td>${rankSelect(p, g)}${roleChips(p, g)}</td>`).join('')}
                 <td class="num">${r == null ? t('players.noRanks') : Math.round(r)}</td>
                 <td><button class="link" title="${attr('players.removeTip')}" data-act="delplayer" data-p="${p.id}">${t('players.remove')}</button></td></tr>`;
             }).join('')}
@@ -100,6 +138,7 @@
         </table></div>` : `<p class="empty">${t('players.empty')}</p>`}
         <div class="row" style="margin-top:12px">
           <button data-act="addplayer">${t('players.add')}</button>
+          <button data-act="sample">${t('players.sample')}</button>
           ${state.players.length ? `<button data-act="clear">${t('players.clear')}</button>` : ''}
         </div>
       </section>
@@ -169,13 +208,25 @@
       else if (act === 'rank') { const r = parseRank(el.value); if (r) p.ratings[g.id] = r; else delete p.ratings[g.id]; }
       else return;
     } else if (e.type === 'click') {
-      if (act === 'addplayer') state.players.push({ id: newId('p'), name: C.plain('players.defaultName', { n: state.players.length + 1 }), ratings: {} });
+      if (act === 'addplayer') state.players.push({ id: newId('p'), name: C.plain('players.defaultName', { n: state.players.length + 1 }), ratings: {}, roles: {} });
       else if (act === 'delplayer') state.players = state.players.filter((x) => x !== p);
       else if (act === 'delgame') {
         state.games = state.games.filter((x) => x !== g);
-        state.players.forEach((pl) => { delete pl.ratings[g.id]; });
+        state.players.forEach((pl) => { delete pl.ratings[g.id]; delete pl.roles[g.id]; });
+      } else if (act === 'role') {
+        const name = el.dataset.r;
+        if ((p.roles[g.id] || [])[0] === name) delete p.roles[g.id];
+        else p.roles[g.id] = [name];
       } else if (act === 'clear') { if (!window.confirm(C.plain('players.clearConfirm'))) return; state.players = []; }
-      else if (act === 'generate') {
+      else if (act === 'sample') {
+        SAMPLE.forEach(([name, r, roles, out]) => {
+          const ratings = {}, rl = {}, plays = {};
+          out.forEach((gid) => { if (gameById(gid)) plays[gid] = false; });
+          Object.entries(r).forEach(([gid, [tier, division]]) => { if (gameById(gid)) ratings[gid] = { tier, division }; });
+          Object.entries(roles).forEach(([gid, list]) => { if (gameById(gid)) rl[gid] = list.slice(); });
+          state.players.push({ id: newId('p'), name, ratings, roles: rl, plays });
+        });
+      } else if (act === 'generate') {
         state.seed += 1;
         try {
           result = T.buildTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, seed: state.seed });
@@ -191,6 +242,23 @@
   document.addEventListener('input', handle);
   document.addEventListener('change', handle);
   document.addEventListener('click', handle);
+  document.addEventListener('submit', (e) => {
+    if (e.target.dataset.act !== 'addgame') return;
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const list = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const tiers = list(f.get('tiers'));
+    if (!tiers.length) return;
+    const roles = list(f.get('roles')).map((s) => {
+      const [name, n] = s.split(':').map((x) => x.trim());
+      return { name, slots: Math.max(1, Math.round(Number(n)) || 1) };
+    });
+    const n = Math.max(1, Math.round(Number(f.get('divs'))) || 1);
+    const gid = newId('g');
+    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 1 / 3, divisions: n, tiers, apex: list(f.get('apex')), roles });
+    save();
+    render();
+  });
 
   render();
 })();
