@@ -70,7 +70,7 @@
     const mine = (player.roles && player.roles[g.id]) || [];
     return `<div class="chips">${g.roles.map((r) => {
       const i = mine.indexOf(r.name);
-      return `<button class="chip${i >= 0 ? ' on' : ''}" data-act="role" data-p="${player.id}" data-g="${g.id}" data-r="${esc(r.name)}" title="${attr('role.addTip')}">${esc(r.name)}</button>`;
+      return `<button class="chip${i >= 0 ? ' on' : ''}" data-act="role" data-p="${player.id}" data-g="${g.id}" data-r="${esc(r.name)}" title="${attr(i === 0 ? 'role.mainTip' : i > 0 ? 'role.alsoTip' : 'role.addTip')}">${i === 0 ? '★ ' : ''}${esc(r.name)}</button>`;
     }).join('')}</div>`;
   }
 
@@ -214,9 +214,12 @@
         state.games = state.games.filter((x) => x !== g);
         state.players.forEach((pl) => { delete pl.ratings[g.id]; delete pl.roles[g.id]; });
       } else if (act === 'role') {
-        const name = el.dataset.r;
-        if ((p.roles[g.id] || [])[0] === name) delete p.roles[g.id];
-        else p.roles[g.id] = [name];
+        const list = (p.roles[g.id] = p.roles[g.id] || []);
+        const name = el.dataset.r, i = list.indexOf(name);
+        if (e.shiftKey) { if (i >= 0) list.splice(i, 1); list.unshift(name); }
+        else if (i >= 0) list.splice(i, 1);
+        else list.push(name);
+        if (!list.length) delete p.roles[g.id];
       } else if (act === 'clear') { if (!window.confirm(C.plain('players.clearConfirm'))) return; state.players = []; }
       else if (act === 'sample') {
         SAMPLE.forEach(([name, r, roles, out]) => {
