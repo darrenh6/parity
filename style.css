@@ -44,11 +44,14 @@ td.num { font-variant-numeric: tabular-nums; }
 label.toggle { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
 button.chip { cursor: pointer; padding: 1px 9px; color: var(--muted); font-weight: 400; background: #fff; border: 1px solid var(--line); }
 button.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.chip.miss { border-color: var(--bad); color: var(--bad); }
 td .chips { margin-top: 4px; max-width: 220px; white-space: normal; }
 
 .wrow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .wrow input { flex: 1; }
 .wrow b { width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.gline { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 13px; }
 
 details summary { cursor: pointer; color: var(--muted); }
 
@@ -58,6 +61,8 @@ details summary { cursor: pointer; color: var(--muted); }
 .field input[type=number] { margin-left: 8px; }
 .field-toggle { display: flex; align-items: flex-start; margin: 14px 0; }
 .field-toggle input { margin-top: 4px; }
+.scale { display: flex; align-items: center; gap: 10px; max-width: 520px; margin: 4px 0; font-size: 13px; color: var(--muted); }
+.scale input { flex: 1; }
 details.how, details.addgame-box { margin-bottom: 22px; background: var(--card); border-radius: 6px; padding: 12px 20px; box-shadow: 0 6px 22px rgba(31, 58, 115, .10); }
 details.addgame-box { margin: 14px 0 0; padding: 8px 14px; box-shadow: none; background: var(--field); border: 1px solid var(--line); }
 details summary { cursor: pointer; font-weight: 700; color: var(--accent); }

@@ -4,8 +4,11 @@
   const BASE = 800;
   const SPAN = 1600;
   const APEX_STEP = 150;
+  const ROLE_SCALE = 100; // elo cost of one missing role
 
   const playsGame = () => true;
+
+  const GAIN = { primary: 1, secondary: 0.85, fill: 0.7, off: 0.15 };
 
   function defaultGames() {
     const third = 1 / 3;
@@ -81,6 +84,58 @@
     return wsum > 0 ? sum / wsum : null;
   }
 
+  // exact dp over slots. gain excludes the priority bonus
+  function assignTeam(members, game, allGames) {
+    const cands = members.filter((m) => playsGame(m, game));
+    const units = [];
+    ((game && game.roles) || []).forEach((r) => {
+      for (let i = 0; i < r.slots; i++) units.push({ role: r.name, accepts: [r.name].concat(r.alsoFilledBy || []) });
+    });
+    const S = units.length, P = cands.length;
+    if (!S) return { gain: 0, ideal: 0, assigned: [], bench: [], missing: [] };
+
+    const bonus = cands.map(() => 0);
+    const base = cands.map((m) => {
+      const pr = (m.roles && m.roles[game.id]) || [];
+      return units.map((u) => {
+        if (!pr.length) return GAIN.fill;
+        let idx = -1;
+        pr.forEach((r, i) => { if (u.accepts.includes(r) && (idx < 0 || i < idx)) idx = i; });
+        return idx < 0 ? GAIN.off : idx === 0 ? GAIN.primary : GAIN.secondary;
+      });
+    });
+
+    const size = 1 << S;
+    let cur = new Float64Array(size).fill(-Infinity);
+    cur[0] = 0;
+    const choices = [];
+    for (let i = 0; i < P; i++) {
+      const next = cur.slice(), ch = new Int8Array(size).fill(-1);
+      for (let mask = 0; mask < size; mask++) {
+        if (cur[mask] === -Infinity) continue;
+        for (let j = 0; j < S; j++) {
+          if (mask & (1 << j)) continue;
+          const v = cur[mask] + base[i][j] + bonus[i], nm = mask | (1 << j);
+          if (v > next[nm] + 1e-12) { next[nm] = v; ch[nm] = j; }
+        }
+      }
+      choices.push(ch);
+      cur = next;
+    }
+    let bestMask = 0;
+    for (let m = 1; m < size; m++) if (cur[m] > cur[bestMask]) bestMask = m;
+
+    const assigned = [], bench = [];
+    let mask = bestMask, gain = 0;
+    for (let i = P - 1; i >= 0; i--) {
+      const j = choices[i][mask];
+      if (j >= 0) { assigned.unshift({ player: cands[i], role: units[j].role }); gain += base[i][j]; mask ^= 1 << j; }
+      else bench.unshift(cands[i]);
+    }
+    const missing = units.filter((_, j) => !(bestMask & (1 << j))).map((u) => u.role);
+    return { gain, ideal: S, assigned, bench, missing };
+  }
+
   function mulberry32(seed) {
     let a = seed >>> 0;
     return function () {
@@ -105,8 +160,9 @@
     return { avgs, std: Math.sqrt(avgs.reduce((s, a) => s + (a - mean) ** 2, 0) / k) };
   }
 
+  // minimizes skew, role shortfall and uneven all-game counts
   function buildTeams(players, opts) {
-    const { games, wide = false, teams: k = 2, seed = 1 } = opts;
+    const { games, wide = false, teams: k = 2, roleWeight = 0.5, seed = 1 } = opts;
     const n = players.length;
     if (k < 2) throw new Error(Copy.plain('err.minTeams'));
     if (n < k) throw new Error(Copy.plain('err.needPlayers', { k, n }));
@@ -117,8 +173,32 @@
     const fallback = meanOf(raw.filter((r) => r != null)) ?? BASE + SPAN / 2;
     const ratings = raw.map((r) => (r == null ? fallback : r));
 
+    const importance = () => 1;
+    const roleGames = games.filter((g) => (g.roles || []).length && importance(g) > 0);
+
+    // swap touches two teams, rest hit cache
+    const cache = new Map();
+    const shortfall = (assign, t, g) => {
+      const idx = [];
+      for (let i = 0; i < n; i++) if (assign[i] === t) idx.push(i);
+      const key = g.id + ':' + idx.join(',');
+      let v = cache.get(key);
+      if (v === undefined) {
+        const a = assignTeam(idx.map((i) => players[i]), g, games);
+        v = a.ideal - a.gain;
+        cache.set(key, v);
+      }
+      return v;
+    };
     const cost = (assign) => {
       let c = avgStd(assign, ratings, k).std;
+      if (roleWeight > 0) {
+        roleGames.forEach((g) => {
+          let s = 0;
+          for (let t = 0; t < k; t++) s += shortfall(assign, t, g);
+          c += roleWeight * importance(g) * ROLE_SCALE * (s / k);
+        });
+      }
       return c;
     };
 
@@ -161,17 +241,29 @@
       players: idx.map((i) => ({ ...players[i], rating: ratings[i], rated: raw[i] != null }))
         .sort((x, y) => y.rating - x.rating),
       avg: comp.avgs[t],
+      games: games.map((g) => {
+        const ga = null;
+        const a = assignTeam(idx.map((i) => players[i]), g, games);
+        return {
+          id: g.id, name: g.name, avg: ga ? ga.avgs[t] : null,
+          assigned: a.assigned.map((x) => ({ name: x.player.name, role: x.role })),
+          bench: a.bench.map((x) => x.name),
+          missing: a.missing,
+        };
+      }),
     }));
+    const missingRoles = result.reduce((s, t) => s + t.games.reduce((x, g) => x + g.missing.length, 0), 0);
     return {
       teams: result,
       stats: {
         spread: spreadOf(comp.avgs),
+        missingRoles,
         cost: bestCost,
       },
     };
   }
 
-  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, buildTeams };
+  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TeamMaker = api;
 })(typeof window !== 'undefined' ? window : globalThis);

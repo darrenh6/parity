@@ -50,12 +50,64 @@ function pool(n, rng) {
   }));
 }
 const seeded = (s) => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+const P = (name, lolRoles, extra = {}) => ({ name, roles: { lol: lolRoles, ...extra }, ratings: {} });
+
+test('assignTeam fills one of each League role when possible', () => {
+  const team = [P('a', ['Top']), P('b', ['Jungle']), P('c', ['Mid']), P('d', ['Bot']), P('e', ['Support'])];
+  const r = T.assignTeam(team, lol);
+  assert.strictEqual(r.missing.length, 0);
+  assert.deepStrictEqual(r.assigned.map((x) => x.role), ['Top', 'Jungle', 'Mid', 'Bot', 'Support']);
+});
+
+test('flexible players resolve conflicts: a multi-role player covers the gap', () => {
+  const team = [P('a', ['Top']), P('b', ['Top', 'Jungle']), P('c', ['Mid']), P('d', ['Bot']), P('e', ['Support'])];
+  const r = T.assignTeam(team, lol);
+  assert.strictEqual(r.missing.length, 0);
+  assert.strictEqual(r.assigned[1].role, 'Jungle');
+});
+
+test('Overwatch wants 1 tank, 2 dps, 2 support', () => {
+  const ow = games[1];
+  const mk = (n, role) => ({ name: n, roles: { ow: [role] }, ratings: {} });
+  const r = T.assignTeam([mk('t', 'Tank'), mk('d1', 'DPS'), mk('d2', 'DPS'), mk('s1', 'Support'), mk('s2', 'Support')], ow);
+  assert.strictEqual(r.missing.length, 0);
+  assert.strictEqual(r.assigned.filter((x) => x.role === 'DPS').length, 2);
+});
+
+test('a duelist can fill the Valorant Flex slot', () => {
+  const val = games[2];
+  const mk = (n, role) => ({ name: n, roles: { val: [role] }, ratings: {} });
+  const r = T.assignTeam([mk('a', 'Duelist'), mk('b', 'Duelist'), mk('c', 'Initiator'), mk('d', 'Controller'), mk('e', 'Sentinel')], val);
+  assert.strictEqual(r.missing.length, 0);
+});
+
+test('too few players leaves the least-coverable roles unfilled, never a crash', () => {
+  const r = T.assignTeam([P('a', ['Top']), P('b', ['Top'])], lol);
+  assert.strictEqual(r.ideal, 5);
+  assert.strictEqual(r.missing.length, 3);
+  assert.ok(!r.missing.includes('Top'));
+  assert.ok(r.assigned.every((x) => x.role));
+});
 
 test('teams are balanced on ELO with sizes differing by at most one', () => {
   const { teams, stats } = T.buildTeams(pool(11, seeded(7)), { games, teams: 2, roleWeight: 0 });
   assert.strictEqual(teams[0].players.length + teams[1].players.length, 11);
   assert.ok(Math.abs(teams[0].players.length - teams[1].players.length) <= 1);
   assert.ok(stats.spread < 25, `spread ${stats.spread}`);
+});
+
+test('role priority gives every team one of each League role', () => {
+  const { teams, stats } = T.buildTeams(pool(10, seeded(3)), { games, teams: 2, roleWeight: 1 });
+  assert.strictEqual(stats.missingRoles, 0);
+  teams.forEach((t) => assert.deepStrictEqual(t.games[0].assigned.map((a) => a.role).sort(), ['Bot', 'Jungle', 'Mid', 'Support', 'Top']));
+});
+
+test('roles trade off against ELO by priority', () => {
+  const players = pool(10, seeded(11));
+  const strict = T.buildTeams(players, { games, teams: 2, roleWeight: 1 });
+  const loose = T.buildTeams(players, { games, teams: 2, roleWeight: 0 });
+  assert.ok(strict.stats.missingRoles <= loose.stats.missingRoles);
+  assert.ok(loose.stats.spread <= strict.stats.spread + 1e-9);
 });
 
 test('supports more than two teams and rejects bad input', () => {

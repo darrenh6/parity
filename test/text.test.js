@@ -9,6 +9,11 @@ test('fills in values and escapes them for the page', () => {
   assert.strictEqual(Text.plain('game.countsAria', { game: 'Valorant' }), 'How much Valorant counts');
 });
 
+test('{n:one|many} switches between singular and plural', () => {
+  assert.strictEqual(Text.plain('result.rolesMissing', { n: 1 }), '1 role across all teams has nobody to play it.');
+  assert.strictEqual(Text.plain('result.rolesMissing', { n: 3 }), '3 roles across all teams have nobody to play them.');
+});
+
 test('text that cannot be filled in is left visible and unknown keys show their name', () => {
   assert.strictEqual(Text.plain('team.title'), 'Team {i}');
   assert.strictEqual(Text.plain('no.such.key'), 'no.such.key');

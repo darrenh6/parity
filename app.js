@@ -24,7 +24,7 @@
   let result = null, error = '';
 
   function fresh() {
-    return { games: T.defaultGames(), players: [], wide: false, teams: 2, seed: 0 };
+    return { games: T.defaultGames(), players: [], wide: false, teams: 2, roleWeight: 0.5, seed: 0 };
   }
   function load() {
     try {
@@ -150,6 +150,13 @@
             <input type="number" min="2" max="10" value="${state.teams}" data-act="teams"></label>
           <span class="hint">${t('teams.hint')}</span>
         </div>
+        <div class="field">
+          <b>${t('priority.title')}</b>
+          <div class="scale"><span>${t('priority.left')}</span>
+            <input type="range" min="0" max="1" step="0.05" value="${state.roleWeight}" data-act="roleWeight" aria-label="${attr('priority.aria')}">
+            <span>${t('priority.right')}</span></div>
+          <span class="hint">${t('priority.hint')}</span>
+        </div>
       </section>
 
       <section>
@@ -167,10 +174,11 @@
   function renderResult() {
     const { teams, stats } = result;
     const vSkill = verdictOf(stats.spread);
-    const vClass = vSkill;
+    const vClass = stats.missingRoles && vSkill === 'good' ? 'ok' : vSkill; // empty roles shouldn't look clean
     const detail = '';
     return `
       <p class="verdict ${vClass}"><b>${t(VERDICT[vSkill])}</b> ${t('result.gap', { gap: Math.round(stats.spread), detail })}
+        ${stats.missingRoles ? t('result.rolesMissing', { n: stats.missingRoles }) : t('result.rolesOk')}
         <span class="muted">${t('result.gapHint')}</span></p>
       <div class="teams" style="margin-top:12px">
         ${teams.map((team, i) => `
@@ -178,6 +186,12 @@
             <h3><span>${t('team.title', { i: i + 1 })} <span class="muted">${t('team.size', { n: team.players.length })}</span></span><span class="muted" title="${attr('team.skillTip')}">${t('team.skill', { n: Math.round(team.avg) })}</span></h3>
             <ul>${team.players.map((pl) => `<li><span>${esc(pl.name || 'Unnamed')}</span>
               <span class="muted" title="${attr('team.playerTip')}">${pl.rated ? Math.round(pl.rating) : t('team.noRank')}</span></li>`).join('')}</ul>
+            ${team.games.map((g) => `
+              <div class="gline"><b>${esc(g.name)}</b>
+                ${g.assigned.length ? `<div class="muted">${g.assigned.map((a) => `${esc(a.role)}: ${esc(a.name || 'Unnamed')}`).join(' · ')}</div>` : ''}
+                ${g.bench.length ? `<div class="muted">${t('team.backups', { names: g.bench.map((n) => n || 'Unnamed').join(', ') })}</div>` : ''}
+                ${g.missing.length ? `<div class="chips"><span class="muted">${t('team.nobody')}</span>${g.missing.map((r) => `<span class="chip miss">${esc(r)}</span>`).join('')}</div>` : ''}
+              </div>`).join('')}
           </div>`).join('')}
       </div>
       `;
@@ -197,6 +211,10 @@
     if (isInput && act === 'weight') {
       g.weight = Number(el.value) / 100;
       document.querySelector(`[data-wl="${g.id}"]`).textContent = pct(g) + '%';
+      return save();
+    }
+    if (isInput && act === 'roleWeight') {
+      state.roleWeight = Number(el.value);
       return save();
     }
     if (isInput) return;
@@ -232,7 +250,7 @@
       } else if (act === 'generate') {
         state.seed += 1;
         try {
-          result = T.buildTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, seed: state.seed });
+          result = T.buildTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, roleWeight: state.roleWeight, seed: state.seed });
           error = '';
         } catch (err) { result = null; error = err.message; }
       } else return;
