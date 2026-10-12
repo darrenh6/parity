@@ -13,16 +13,16 @@
   function defaultGames() {
     const third = 1 / 3;
     return [
-      { id: 'lol', name: 'League of Legends', weight: third, divisions: 4,
+      { id: 'lol', name: 'League of Legends', weight: third, divisions: 4, roleImportance: 1,
         tiers: ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Emerald', 'Diamond'],
         apex: ['Master', 'Grandmaster', 'Challenger'],
         roles: [{ name: 'Top', slots: 1 }, { name: 'Jungle', slots: 1 }, { name: 'Mid', slots: 1 },
                 { name: 'Bot', slots: 1 }, { name: 'Support', slots: 1 }] },
-      { id: 'ow', name: 'Overwatch', weight: third, divisions: 5,
+      { id: 'ow', name: 'Overwatch', weight: third, divisions: 5, roleImportance: 1,
         tiers: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'],
         apex: ['Master', 'Grandmaster', 'Champion'],
         roles: [{ name: 'Tank', slots: 1 }, { name: 'DPS', slots: 2 }, { name: 'Support', slots: 2 }] },
-      { id: 'val', name: 'Valorant', weight: third, divisions: 3,
+      { id: 'val', name: 'Valorant', weight: third, divisions: 3, roleImportance: 0.3,
         tiers: ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant'],
         apex: ['Immortal', 'Radiant'],
         // flex is usually a second duelist
@@ -173,7 +173,18 @@
     const fallback = meanOf(raw.filter((r) => r != null)) ?? BASE + SPAN / 2;
     const ratings = raw.map((r) => (r == null ? fallback : r));
 
-    const importance = () => 1;
+    const nw = normalizedWeights(games);
+    const perGame = [];
+    games.forEach((g) => {
+      if (!(nw[g.id] > 0)) return;
+      const inc = players.map((p) => playsGame(p, g));
+      const elos = players.map((p, i) => (inc[i] ? rankToElo(g, p.ratings && p.ratings[g.id], wide) : null));
+      const m = meanOf(elos.filter((e) => e != null));
+      if (m == null) return;
+      perGame.push({ game: g, w: nw[g.id], inc, elos: elos.map((e) => (e == null ? m : e)) });
+    });
+
+    const importance = (g) => (g.roleImportance == null ? 1 : g.roleImportance);
     const roleGames = games.filter((g) => (g.roles || []).length && importance(g) > 0);
 
     // swap touches two teams, rest hit cache
@@ -191,7 +202,8 @@
       return v;
     };
     const cost = (assign) => {
-      let c = avgStd(assign, ratings, k).std;
+      let c = 0.5 * avgStd(assign, ratings, k).std;
+      perGame.forEach((pg) => { c += 0.5 * pg.w * avgStd(assign, pg.elos, k, pg.inc).std; });
       if (roleWeight > 0) {
         roleGames.forEach((g) => {
           let s = 0;
@@ -230,6 +242,7 @@
     }
 
     const comp = avgStd(best, ratings, k);
+    const gameAvgs = perGame.map((pg) => ({ pg, ...avgStd(best, pg.elos, k, pg.inc) }));
     const members = [];
     for (let t = 0; t < k; t++) {
       const idx = [];
@@ -242,7 +255,7 @@
         .sort((x, y) => y.rating - x.rating),
       avg: comp.avgs[t],
       games: games.map((g) => {
-        const ga = null;
+        const ga = gameAvgs.find((x) => x.pg.game === g);
         const a = assignTeam(idx.map((i) => players[i]), g, games);
         return {
           id: g.id, name: g.name, avg: ga ? ga.avgs[t] : null,
@@ -257,6 +270,7 @@
       teams: result,
       stats: {
         spread: spreadOf(comp.avgs),
+        perGame: gameAvgs.map((x) => ({ id: x.pg.game.id, name: x.pg.game.name, spread: spreadOf(x.avgs) })),
         missingRoles,
         cost: bestCost,
       },

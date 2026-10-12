@@ -74,6 +74,7 @@
     }).join('')}</div>`;
   }
 
+  const importanceKey = (v) => (v < 0.25 ? 'game.importance.low' : v < 0.6 ? 'game.importance.mid' : 'game.importance.high');
   const ladderText = (g) => (state.wide && g.apex.length
     ? C.plain('game.ladderApex', { low: g.tiers[0], high: g.tiers[g.tiers.length - 1], apex: g.apex.join(', ') })
     : C.plain('game.ladder', { low: g.tiers[0], high: g.tiers[g.tiers.length - 1] }));
@@ -98,6 +99,8 @@
               <div class="wrow"><input type="range" min="0" max="100" step="1" value="${pct(g)}" ${''} data-act="weight" data-g="${g.id}" aria-label="${attr('game.countsAria', { game: g.name })}">
                 <b data-wl="${g.id}">${pct(g)}%</b></div>
               ${(g.roles || []).length ? `
+                <div class="muted">${t('game.rolesLabel')} <b data-il="${g.id}">${t(importanceKey(g.roleImportance == null ? 1 : g.roleImportance))}</b></div>
+                <div class="wrow"><input type="range" min="0" max="1" step="0.05" value="${g.roleImportance == null ? 1 : g.roleImportance}" data-act="importance" data-g="${g.id}" aria-label="${attr('game.rolesAria', { game: g.name })}"></div>
                 <div class="muted">${t('game.needs', { roles: rolesText(g) })}</div>` : `<div class="muted">${t('game.noRoles')}</div>`}
               <div class="muted">${t('game.ranks', { ladder: ladderText(g) })}</div>
             </div>`).join('')}
@@ -175,7 +178,7 @@
     const { teams, stats } = result;
     const vSkill = verdictOf(stats.spread);
     const vClass = stats.missingRoles && vSkill === 'good' ? 'ok' : vSkill; // empty roles shouldn't look clean
-    const detail = '';
+    const detail = stats.perGame.length > 1 ? ` (${stats.perGame.map((g) => `${g.name}: ${Math.round(g.spread)}`).join(', ')})` : '';
     return `
       <p class="verdict ${vClass}"><b>${t(VERDICT[vSkill])}</b> ${t('result.gap', { gap: Math.round(stats.spread), detail })}
         ${stats.missingRoles ? t('result.rolesMissing', { n: stats.missingRoles }) : t('result.rolesOk')}
@@ -187,7 +190,7 @@
             <ul>${team.players.map((pl) => `<li><span>${esc(pl.name || 'Unnamed')}</span>
               <span class="muted" title="${attr('team.playerTip')}">${pl.rated ? Math.round(pl.rating) : t('team.noRank')}</span></li>`).join('')}</ul>
             ${team.games.map((g) => `
-              <div class="gline"><b>${esc(g.name)}</b>
+              <div class="gline"><b>${esc(g.name)}</b>${g.avg == null ? '' : ` <span class="muted">${t('team.gameAvg', { n: Math.round(g.avg) })}</span>`}
                 ${g.assigned.length ? `<div class="muted">${g.assigned.map((a) => `${esc(a.role)}: ${esc(a.name || 'Unnamed')}`).join(' · ')}</div>` : ''}
                 ${g.bench.length ? `<div class="muted">${t('team.backups', { names: g.bench.map((n) => n || 'Unnamed').join(', ') })}</div>` : ''}
                 ${g.missing.length ? `<div class="chips"><span class="muted">${t('team.nobody')}</span>${g.missing.map((r) => `<span class="chip miss">${esc(r)}</span>`).join('')}</div>` : ''}
@@ -211,6 +214,11 @@
     if (isInput && act === 'weight') {
       g.weight = Number(el.value) / 100;
       document.querySelector(`[data-wl="${g.id}"]`).textContent = pct(g) + '%';
+      return save();
+    }
+    if (isInput && act === 'importance') {
+      g.roleImportance = Number(el.value);
+      document.querySelector(`[data-il="${g.id}"]`).innerHTML = t(importanceKey(g.roleImportance));
       return save();
     }
     if (isInput && act === 'roleWeight') {
@@ -276,7 +284,7 @@
     });
     const n = Math.max(1, Math.round(Number(f.get('divs'))) || 1);
     const gid = newId('g');
-    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 1 / 3, divisions: n, tiers, apex: list(f.get('apex')), roles });
+    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 1 / 3, divisions: n, tiers, apex: list(f.get('apex')), roles, roleImportance: 1 });
     save();
     render();
   });

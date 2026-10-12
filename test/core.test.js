@@ -129,3 +129,26 @@ test('30 players across 3 teams runs quickly', () => {
   assert.ok(Date.now() - t0 < 5000);
 });
 
+function multi(n, rng) {
+  const pick = (g) => ({ tier: g.tiers[Math.floor(rng() * g.tiers.length)], division: 1 + Math.floor(rng() * g.divisions) });
+  const lolRoles = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'], ow = ['Tank', 'DPS', 'DPS', 'Support', 'Support'];
+  const val = ['Duelist', 'Initiator', 'Controller', 'Sentinel', 'Flex'];
+  return Array.from({ length: n }, (_, i) => ({
+    name: `M${i}`,
+    ratings: { lol: pick(games[0]), ow: pick(games[1]), val: pick(games[2]) },
+    roles: { lol: [lolRoles[i % 5]], ow: [ow[i % 5]], val: [val[i % 5]] },
+  }));
+}
+
+test('one set of teams is level in every game, not just overall', () => {
+  const { stats } = T.buildTeams(multi(10, seeded(21)), { games, teams: 2, roleWeight: 0 });
+  stats.perGame.forEach((g) => assert.ok(g.spread < 150, `${g.name} spread ${g.spread}`));
+  assert.ok(stats.spread < 60);
+});
+
+test('the same teams field roles in every game', () => {
+  const { teams, stats } = T.buildTeams(multi(10, seeded(4)), { games, teams: 2, roleWeight: 1 });
+  teams.forEach((t) => assert.strictEqual(t.games.length, 3));
+  assert.strictEqual(stats.missingRoles, 0);
+});
+
