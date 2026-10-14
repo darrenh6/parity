@@ -152,3 +152,13 @@ test('the same teams field roles in every game', () => {
   assert.strictEqual(stats.missingRoles, 0);
 });
 
+test('League/Overwatch: division 1 is highest; Valorant: division 3 is highest', () => {
+  const [lolG, owG, valG] = games;
+  assert.ok(T.rankToElo(lolG, { tier: 'Gold', division: 1 }) > T.rankToElo(lolG, { tier: 'Gold', division: 4 }));
+  assert.ok(T.rankToElo(owG, { tier: 'Gold', division: 1 }) > T.rankToElo(owG, { tier: 'Gold', division: 5 }));
+  assert.ok(T.rankToElo(valG, { tier: 'Gold', division: 3 }) > T.rankToElo(valG, { tier: 'Gold', division: 1 }));
+  assert.ok(T.rankToElo(valG, { tier: 'Gold', division: 3 }) < T.rankToElo(valG, { tier: 'Platinum', division: 1 }));
+  assert.deepStrictEqual(T.ladder(valG, false).slice(0, 3).map((r) => r.label), ['Iron 1', 'Iron 2', 'Iron 3']);
+  assert.deepStrictEqual(T.ladder(lolG, false).slice(0, 4).map((r) => r.label), ['Iron 4', 'Iron 3', 'Iron 2', 'Iron 1']);
+});
+

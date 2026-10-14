@@ -32,6 +32,7 @@
     "addgame.roles": "Roles and role count (optional)",
     "addgame.rolesPh": "e.g. Tank, DPS:2, Support:2",
     "addgame.divs": "Levels inside each rank (like Gold 1, 2, 3)",
+    "addgame.asc": "In this game, level 1 is the lowest (like Valorant). Leave unticked if level 1 is the highest (like League of Legends).",
     "addgame.button": "Add game",
     "players.heading": "Players ({n})",
     "players.intro": "For each game a player takes part in, choose their rank and tick every role they can play. The first role you tick is their **main role** (★); hold Shift while clicking a role to make it their main one.",

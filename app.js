@@ -30,6 +30,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (s && Array.isArray(s.games) && Array.isArray(s.players)) { const st = { ...fresh(), ...s };
+        st.games.forEach((g) => { if (g.id === 'val' && g.divisionsAscend === undefined) g.divisionsAscend = true; });
         return st; }
     } catch (e) { /* corrupt storage, start fresh */ }
     return fresh();
@@ -118,6 +119,7 @@
             <label>${t('addgame.apex')} <input type="text" name="apex" placeholder="${attr('addgame.apexPh')}"></label>
             <label>${t('addgame.roles')} <input type="text" name="roles" placeholder="${attr('addgame.rolesPh')}"></label>
             <label>${t('addgame.divs')} <input type="number" name="divs" min="1" max="9" value="3"></label>
+            <label class="toggle"><input type="checkbox" name="asc"> ${t('addgame.asc')}</label>
             <button class="primary">${t('addgame.button')}</button>
           </form>
         </details>
@@ -284,7 +286,7 @@
     });
     const n = Math.max(1, Math.round(Number(f.get('divs'))) || 1);
     const gid = newId('g');
-    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 1 / 3, divisions: n, tiers, apex: list(f.get('apex')), roles, roleImportance: 1 });
+    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 1 / 3, divisions: n, divisionsAscend: f.get('asc') === 'on', tiers, apex: list(f.get('apex')), roles, roleImportance: 1 });
     save();
     render();
   });

@@ -22,7 +22,7 @@
         tiers: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'],
         apex: ['Master', 'Grandmaster', 'Champion'],
         roles: [{ name: 'Tank', slots: 1 }, { name: 'DPS', slots: 2 }, { name: 'Support', slots: 2 }] },
-      { id: 'val', name: 'Valorant', weight: third, divisions: 3, roleImportance: 0.3,
+      { id: 'val', name: 'Valorant', weight: third, divisions: 3, divisionsAscend: true, roleImportance: 0.3,
         tiers: ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant'],
         apex: ['Immortal', 'Radiant'],
         // flex is usually a second duelist
@@ -36,8 +36,10 @@
     return BASE + (SPAN * (n - 1 + (game.divisions - 1) / game.divisions)) / n;
   }
 
+  // league and overwatch count down, valorant up
   function divisionPos(game, d) {
-    return (game.divisions - d) / game.divisions;
+    const D = game.divisions;
+    return game.divisionsAscend ? (d - 1) / D : (D - d) / D;
   }
 
   // apex capped at top tier unless wide, skews balance
@@ -56,7 +58,7 @@
     const out = [];
     game.tiers.forEach((tier) => {
       for (let i = 0; i < game.divisions; i++) {
-        const d = game.divisions - i;
+        const d = game.divisionsAscend ? i + 1 : game.divisions - i;
         const label = game.divisions > 1 ? `${tier} ${d}` : tier;
         out.push({ tier, division: d, label });
       }
