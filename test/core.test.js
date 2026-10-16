@@ -162,3 +162,25 @@ test('League/Overwatch: division 1 is highest; Valorant: division 3 is highest',
   assert.deepStrictEqual(T.ladder(lolG, false).slice(0, 4).map((r) => r.label), ['Iron 4', 'Iron 3', 'Iron 2', 'Iron 1']);
 });
 
+const mk = (name, sitsOut = [], lolRole, rank = { tier: 'Gold', division: 2 }) => ({
+  name, plays: Object.fromEntries(sitsOut.map((g) => [g, false])),
+  ratings: { lol: rank, ow: rank, val: rank },
+  roles: lolRole ? { lol: [lolRole] } : {},
+});
+
+test('players who sit a game out are never placed in it', () => {
+  const val = games[2];
+  const team = [mk('a'), mk('b', ['val']), mk('c', ['val'])];
+  const r = T.assignTeam(team, val, games);
+  assert.deepStrictEqual(r.assigned.map((x) => x.player.name), ['a']);
+  assert.strictEqual(r.missing.length, 4);
+});
+
+test('extra players fill in for a game others skip', () => {
+  const val = games[2];
+  const team = [mk('l1', ['val']), mk('l2', ['val']), mk('x', []), mk('y', []), mk('z', []), mk('v1', ['lol', 'ow']), mk('v2', ['lol', 'ow'])];
+  const r = T.assignTeam(team, val, games);
+  assert.strictEqual(r.missing.length, 0);
+  assert.ok(!r.assigned.some((a) => a.player.name.startsWith('l')));
+});
+

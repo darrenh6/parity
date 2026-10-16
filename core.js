@@ -6,7 +6,8 @@
   const APEX_STEP = 150;
   const ROLE_SCALE = 100; // elo cost of one missing role
 
-  const playsGame = () => true;
+  // plays is true unless set to false
+  const playsGame = (person, game) => !(person.plays && person.plays[game.id] === false);
 
   const GAIN = { primary: 1, secondary: 0.85, fill: 0.7, off: 0.15 };
 
@@ -78,6 +79,7 @@
   function playerRating(person, games, wide) {
     let sum = 0, wsum = 0;
     games.forEach((g) => {
+      if (!playsGame(person, g)) return;
       const elo = rankToElo(g, person.ratings && person.ratings[g.id], wide);
       if (elo == null || !(g.weight > 0)) return;
       sum += g.weight * elo;
@@ -188,6 +190,7 @@
 
     const importance = (g) => (g.roleImportance == null ? 1 : g.roleImportance);
     const roleGames = games.filter((g) => (g.roles || []).length && importance(g) > 0);
+    const isFull = players.map((p) => games.every((g) => playsGame(p, g)));
 
     // swap touches two teams, rest hit cache
     const cache = new Map();
@@ -253,8 +256,10 @@
     }
     const spreadOf = (avgs) => Math.max(...avgs) - Math.min(...avgs);
     const result = members.map((idx, t) => ({
-      players: idx.map((i) => ({ ...players[i], rating: ratings[i], rated: raw[i] != null }))
-        .sort((x, y) => y.rating - x.rating),
+      players: idx.map((i) => ({
+        ...players[i], rating: ratings[i], rated: raw[i] != null, playsAll: isFull[i],
+        gamesPlayed: games.filter((g) => playsGame(players[i], g)).map((g) => g.name),
+      })).sort((x, y) => y.playsAll - x.playsAll || y.rating - x.rating),
       avg: comp.avgs[t],
       games: games.map((g) => {
         const ga = gameAvgs.find((x) => x.pg.game === g);

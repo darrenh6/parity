@@ -82,6 +82,7 @@
   const rolesText = (g) => (g.roles || []).map((r) => (r.slots > 1 ? `${r.slots} ${r.name}` : r.name)).join(', ');
 
   function render() {
+    const everyGame = state.players.filter((p) => state.games.every((g) => T.playsGame(p, g))).length;
     const app = document.getElementById('app');
     document.title = C.plain('app.title');
     app.innerHTML = `
@@ -127,7 +128,8 @@
 
       <section>
         <h2><span class="step">2</span> ${t('players.heading', { n: state.players.length })}</h2>
-        <p class="muted">${t('players.intro')}</p>
+        <p class="muted">${t('players.intro')}
+        ${state.players.length ? t('players.everyGame', { n: everyGame, total: state.players.length }) : ''} ${t('players.roundNumber')}</p>
         ${state.players.length ? `<div class="tablewrap"><table>
           <thead><tr><th>${t('players.col.name')}</th>${state.games.map((g) => `<th>${esc(g.name)}</th>`).join('')}<th title="${attr('players.col.skillTip')}">${t('players.col.skill')}</th><th></th></tr></thead>
           <tbody>
@@ -135,7 +137,9 @@
               const r = T.playerRating(p, state.games, state.wide);
               return `<tr>
                 <td><input type="text" value="${esc(p.name)}" data-act="name" data-p="${p.id}" aria-label="${attr('players.nameAria')}"></td>
-                ${state.games.map((g) => `<td>${rankSelect(p, g)}${roleChips(p, g)}</td>`).join('')}
+                ${state.games.map((g) => { const on = T.playsGame(p, g);
+                  return `<td><label class="plays"><input type="checkbox" data-act="plays" data-p="${p.id}" data-g="${g.id}" ${on ? 'checked' : ''}> ${t('players.plays')}</label>
+                    ${on ? rankSelect(p, g) + roleChips(p, g) : `<div class="muted">${t('players.notPlaying')}</div>`}</td>`; }).join('')}
                 <td class="num">${r == null ? t('players.noRanks') : Math.round(r)}</td>
                 <td><button class="link" title="${attr('players.removeTip')}" data-act="delplayer" data-p="${p.id}">${t('players.remove')}</button></td></tr>`;
             }).join('')}
@@ -189,7 +193,7 @@
         ${teams.map((team, i) => `
           <div class="team">
             <h3><span>${t('team.title', { i: i + 1 })} <span class="muted">${t('team.size', { n: team.players.length })}</span></span><span class="muted" title="${attr('team.skillTip')}">${t('team.skill', { n: Math.round(team.avg) })}</span></h3>
-            <ul>${team.players.map((pl) => `<li><span>${esc(pl.name || 'Unnamed')}</span>
+            <ul>${team.players.map((pl) => `<li><span>${esc(pl.name || 'Unnamed')} <span class="muted">${pl.playsAll ? '' : t('team.plays', { games: pl.gamesPlayed.join(' + ') || C.plain('team.noGames') })}</span></span>
               <span class="muted" title="${attr('team.playerTip')}">${pl.rated ? Math.round(pl.rating) : t('team.noRank')}</span></li>`).join('')}</ul>
             ${team.games.map((g) => `
               <div class="gline"><b>${esc(g.name)}</b>${g.avg == null ? '' : ` <span class="muted">${t('team.gameAvg', { n: Math.round(g.avg) })}</span>`}
@@ -232,15 +236,16 @@
     if (e.type === 'change') {
       if (act === 'wide') state.wide = el.checked;
       else if (act === 'teams') state.teams = Math.min(10, Math.max(2, Math.round(Number(el.value)) || 2));
+      else if (act === 'plays') { p.plays = p.plays || {}; if (el.checked) delete p.plays[g.id]; else p.plays[g.id] = false; }
       else if (act === 'name') p.name = el.value.trim();
       else if (act === 'rank') { const r = parseRank(el.value); if (r) p.ratings[g.id] = r; else delete p.ratings[g.id]; }
       else return;
     } else if (e.type === 'click') {
-      if (act === 'addplayer') state.players.push({ id: newId('p'), name: C.plain('players.defaultName', { n: state.players.length + 1 }), ratings: {}, roles: {} });
+      if (act === 'addplayer') state.players.push({ id: newId('p'), name: C.plain('players.defaultName', { n: state.players.length + 1 }), ratings: {}, roles: {}, plays: {} });
       else if (act === 'delplayer') state.players = state.players.filter((x) => x !== p);
       else if (act === 'delgame') {
         state.games = state.games.filter((x) => x !== g);
-        state.players.forEach((pl) => { delete pl.ratings[g.id]; delete pl.roles[g.id]; });
+        state.players.forEach((pl) => { delete pl.ratings[g.id]; delete pl.roles[g.id]; if (pl.plays) delete pl.plays[g.id]; });
       } else if (act === 'role') {
         const list = (p.roles[g.id] = p.roles[g.id] || []);
         const name = el.dataset.r, i = list.indexOf(name);
