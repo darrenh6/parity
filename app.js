@@ -203,6 +203,7 @@
               </div>`).join('')}
           </div>`).join('')}
       </div>
+      <p class="muted" style="margin-top:8px">${t('team.allGame', { counts: stats.allGameCounts.join(' / ') })}</p>
       `;
   }
 

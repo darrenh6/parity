@@ -88,6 +88,7 @@
     "team.gameAvg": "· average skill {n}",
     "team.backups": "Backups: {names}",
     "team.nobody": "Nobody for:",
+    "team.allGame": "Players who play every game per team: {counts}.",
     "err.needPlayers": "Add at least {k} players to make {k} teams (you have {n}).",
     "err.minTeams": "Choose at least 2 teams."
   };

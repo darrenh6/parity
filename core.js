@@ -6,6 +6,10 @@
   const APEX_STEP = 150;
   const ROLE_SCALE = 100; // elo cost of one missing role
 
+  // bonus beats any role-fit gap
+  const PRIORITY_BONUS = 6;
+  const FULL_PENALTY = 150;
+
   // plays is true unless set to false
   const playsGame = (person, game) => !(person.plays && person.plays[game.id] === false);
 
@@ -98,7 +102,8 @@
     const S = units.length, P = cands.length;
     if (!S) return { gain: 0, ideal: 0, assigned: [], bench: [], missing: [] };
 
-    const bonus = cands.map(() => 0);
+    const bonus = cands.map((m) => (allGames && allGames.length
+      ? (PRIORITY_BONUS * allGames.filter((g) => playsGame(m, g)).length) / allGames.length : 0));
     const base = cands.map((m) => {
       const pr = (m.roles && m.roles[game.id]) || [];
       return units.map((u) => {
@@ -191,6 +196,8 @@
     const importance = (g) => (g.roleImportance == null ? 1 : g.roleImportance);
     const roleGames = games.filter((g) => (g.roles || []).length && importance(g) > 0);
     const isFull = players.map((p) => games.every((g) => playsGame(p, g)));
+    const fullVals = isFull.map((f) => (f ? 1 : 0));
+    const mixed = isFull.some((f) => f) && isFull.some((f) => !f);
 
     // swap touches two teams, rest hit cache
     const cache = new Map();
@@ -216,6 +223,7 @@
           c += roleWeight * importance(g) * ROLE_SCALE * (s / k);
         });
       }
+      if (mixed) c += FULL_PENALTY * avgStd(assign, fullVals, k).std;
       return c;
     };
 
@@ -278,6 +286,7 @@
       stats: {
         spread: spreadOf(comp.avgs),
         perGame: gameAvgs.map((x) => ({ id: x.pg.game.id, name: x.pg.game.name, spread: spreadOf(x.avgs) })),
+        allGameCounts: result.map((t) => t.players.filter((p) => p.playsAll).length),
         missingRoles,
         cost: bestCost,
       },

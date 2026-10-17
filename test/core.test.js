@@ -184,3 +184,39 @@ test('extra players fill in for a game others skip', () => {
   assert.ok(!r.assigned.some((a) => a.player.name.startsWith('l')));
 });
 
+test('all-game players start ahead of partial players when the roster is over-full', () => {
+  const lolG = games[0];
+  const team = [mk('full1', [], 'Top'), mk('full2', [], 'Jungle'), mk('full3', [], 'Mid'), mk('full4', [], 'Bot'),
+                mk('full5', [], 'Support'), mk('partial', ['ow', 'val'], 'Top')];
+  const r = T.assignTeam(team, lolG, games);
+  assert.deepStrictEqual(r.bench.map((p) => p.name), ['partial']);
+  assert.strictEqual(r.missing.length, 0);
+});
+
+test('priority holds even when the partial player fits the role better', () => {
+  const lolG = games[0];
+  const team = [mk('fullOff', [], 'Mid'), mk('a', [], 'Jungle'), mk('b', [], 'Mid'), mk('c', [], 'Bot'),
+                mk('d', [], 'Support'), mk('partialTop', ['ow', 'val'], 'Top')];
+  const r = T.assignTeam(team, lolG, games);
+  assert.ok(r.assigned.some((x) => x.player.name === 'fullOff'));
+  assert.deepStrictEqual(r.bench.map((p) => p.name), ['partialTop']);
+});
+
+test('non-multiple-of-5 pools give uneven rosters with subs, and all-game players are spread evenly', () => {
+  const players = [
+    ...Array.from({ length: 6 }, (_, i) => mk(`full${i}`, [], ['Top', 'Jungle', 'Mid', 'Bot', 'Support'][i % 5])),
+    mk('lolOnly1', ['ow', 'val'], 'Top'), mk('lolOnly2', ['ow', 'val'], 'Support'),
+    mk('owVal1', ['lol']), mk('owVal2', ['lol']), mk('valOnly', ['lol', 'ow']),
+  ];
+  const { teams, stats } = T.buildTeams(players, { games, teams: 2, roleWeight: 1 });
+  assert.deepStrictEqual(teams.map((t) => t.players.length).sort(), [5, 6]);
+  assert.deepStrictEqual(stats.allGameCounts, [3, 3]);
+  teams.forEach((t) => t.games.forEach((g) => {
+    const names = new Set(g.assigned.map((a) => a.name));
+    assert.strictEqual(names.size, g.assigned.length);
+    t.players.forEach((p) => {
+      if (!p.playsAll && !p.gamesPlayed.includes(g.name)) assert.ok(!names.has(p.name), `${p.name} placed in ${g.name}`);
+    });
+  }));
+});
+
