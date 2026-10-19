@@ -7,6 +7,7 @@ const COPY = require('../copy.js');
 
 test('fills in values and escapes them for the page', () => {
   assert.strictEqual(Text.plain('game.countsAria', { game: 'Valorant' }), 'How much Valorant counts');
+  assert.strictEqual(Text.t('info.unranked', { names: '<i>Al</i>', game: 'LoL' }), '&lt;i&gt;Al&lt;/i&gt;: no LoL rank entered, so average skill is assumed there.');
 });
 
 test('{n:one|many} switches between singular and plural', () => {

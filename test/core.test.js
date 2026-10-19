@@ -220,3 +220,37 @@ test('non-multiple-of-5 pools give uneven rosters with subs, and all-game player
   }));
 });
 
+const full = (i) => ({
+  name: `F${i}`,
+  ratings: { lol: { tier: 'Gold', division: 2 }, ow: { tier: 'Gold', division: 2 }, val: { tier: 'Gold', division: 2 } },
+  roles: { lol: [['Top', 'Jungle', 'Mid', 'Bot', 'Support'][i % 5]], ow: [['Tank', 'DPS', 'DPS', 'Support', 'Support'][i % 5]], val: [['Duelist', 'Initiator', 'Controller', 'Sentinel', 'Flex'][i % 5]] },
+});
+const fullPool = (n) => Array.from({ length: n }, (_, i) => full(i));
+const texts = (w) => w.map((x) => x.text).join('\n');
+
+test('warns when a game does not have enough players for the selected team count', () => {
+  const players = [...fullPool(6), ...Array.from({ length: 6 }, (_, i) => ({ ...full(i + 6), plays: { val: false } }))];
+  const w = T.staticWarnings(players, { games, teams: 3 });
+  assert.ok(w.some((x) => x.level === 'warn' && /Valorant: 3 teams need 15 players .* only 6 play it, .* 9 role spots/.test(x.text)), texts(w));
+});
+
+test('errors when there are fewer players than teams or a team cannot field a game', () => {
+  assert.ok(T.staticWarnings(fullPool(2), { games, teams: 3 }).some((x) => x.level === 'error'));
+  const players = [...fullPool(4), ...Array.from({ length: 6 }, (_, i) => ({ ...full(i + 4), plays: { ow: false } }))];
+  assert.ok(T.staticWarnings(players, { games, teams: 6 }).some((x) => x.level === 'error' && x.text.startsWith('Overwatch')));
+});
+
+test('warns about too few all-game players and missing rank/role data', () => {
+  const partial = (i) => ({ ...full(i), plays: { val: false } });
+  const players = [full(0), ...Array.from({ length: 7 }, (_, i) => partial(i + 1))];
+  assert.ok(T.staticWarnings(players, { games, teams: 3 }).some((x) => /Only 1 player plays every game/.test(x.text)));
+  const sparse = [...fullPool(5), { name: 'Blank', ratings: {}, roles: {} }];
+  const w = T.staticWarnings(sparse, { games, teams: 2 });
+  assert.ok(w.some((x) => x.level === 'info' && /Blank: no League of Legends rank entered/.test(x.text)));
+  assert.ok(w.some((x) => x.level === 'info' && /Blank: no League of Legends roles chosen/.test(x.text)));
+});
+
+test('a clean pool produces no warnings', () => {
+  assert.deepStrictEqual(T.staticWarnings(fullPool(15), { games, teams: 3 }), []);
+});
+

@@ -168,6 +168,8 @@
         </div>
       </section>
 
+      ${checksHtml()}
+
       <section>
         <h2><span class="step">4</span> ${t('make.heading')}</h2>
         <div class="row"><button class="primary" data-act="generate">${t(result ? 'make.again' : 'make.button')}</button>
@@ -175,6 +177,21 @@
         ${error ? `<p class="error">${esc(error)}</p>` : ''}
         ${result ? renderResult() : ''}
       </section>`;
+  }
+
+  const ICON = { error: '⛔', warn: '⚠️', info: 'ℹ️' };
+  function checksHtml() {
+    if (state.players.length < 2) return '';
+    const k = state.teams;
+    const list = T.staticWarnings(state.players, { games: state.games, teams: k, wide: state.wide })
+      .concat([]);
+    list.sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level));
+    return `<section>
+      <h2>${t('checks.heading')}</h2>
+      <p class="muted">${t('checks.intro')}</p>
+      ${list.length ? `<ul class="warnings">${list.map((w) => `<li class="${w.level}"><span>${ICON[w.level]}</span> ${t(w.key, w.vars)}</li>`).join('')}</ul>`
+        : `<p class="good">${t('checks.okTeams', { k })}</p>`}
+    </section>`;
   }
 
   const VERDICT = { good: 'verdict.good', ok: 'verdict.ok', bad: 'verdict.bad' };

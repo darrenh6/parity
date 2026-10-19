@@ -55,6 +55,11 @@ td .chips { margin-top: 4px; max-width: 220px; white-space: normal; }
 
 label.plays { font-size: 12px; color: var(--muted); display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
 
+.warnings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.warnings li { display: flex; gap: 8px; padding: 8px 12px; border-radius: 5px; border: 1px solid var(--line); border-left-width: 6px; background: var(--field); }
+.warnings li.error { border-left-color: var(--bad); }
+.warnings li.warn { border-left-color: var(--warn); }
+.warnings li.info { border-left-color: var(--accent); color: var(--muted); }
 details summary { cursor: pointer; color: var(--muted); }
 
 .step { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 14px; align-items: center; justify-content: center; margin-right: 6px; }
@@ -73,6 +78,7 @@ details summary { cursor: pointer; font-weight: 700; color: var(--accent); }
 .addgame label.toggle { display: flex; }
 .addgame input[type=text], .addgame input[type=number] { width: 100%; max-width: 480px; }
 .empty { padding: 18px; border: 2px dashed var(--line); border-radius: 6px; color: var(--muted); }
+.good { color: var(--good); margin: 0; }
 .verdict { padding: 10px 14px; border-radius: 5px; margin: 12px 0 0; border-left: 6px solid var(--line); background: var(--field); }
 .verdict.good { border-left-color: var(--good); color: var(--text); }
 .verdict.ok { border-left-color: var(--warn); }

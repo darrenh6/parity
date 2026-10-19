@@ -293,7 +293,59 @@
     };
   }
 
-  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams };
+  const levelOrder = { error: 0, warn: 1, info: 2 };
+  const importanceOf = (g) => (g.roleImportance == null ? 1 : g.roleImportance);
+  const slotCount = (g) => (g.roles || []).reduce((s, r) => s + r.slots, 0);
+  const nameList = (arr) => {
+    const n = arr.map((p) => p.name || 'Unnamed');
+    return n.length > 4 ? `${n.slice(0, 4).join(', ')} +${n.length - 4} more` : n.join(', ');
+  };
+  const fmt = (x) => String(Math.round(x * 10) / 10);
+  const msg = (level, key, vars) => ({ level, key, vars, text: Copy.plain(key, vars) });
+
+  // no team search, cheap enough for every edit
+  function staticWarnings(players, opts) {
+    const { games, teams: k = 2, wide = false } = opts;
+    const out = [];
+    const push = (level, key, vars) => out.push(msg(level, key, vars));
+    const n = players.length;
+    if (!n) return out;
+    if (n < k) push('error', 'warn.fewPlayers', { k, n });
+
+    const sitsOutAll = players.filter((p) => games.every((g) => !playsGame(p, g)));
+    if (sitsOutAll.length) push('warn', 'warn.skipAll', { names: nameList(sitsOutAll), n: sitsOutAll.length });
+
+    const nw = normalizedWeights(games);
+    games.forEach((g) => {
+      const playing = players.filter((p) => playsGame(p, g));
+      const S = slotCount(g);
+      if (S > 0 && n >= k) {
+        const need = k * S;
+        if (playing.length < k) push('error', 'warn.gameNobody', { game: g.name, n: playing.length, missing: k - playing.length, k });
+        else if (playing.length < need) push('warn', 'warn.gameShort', { game: g.name, k, need, n: playing.length, missing: need - playing.length });
+      }
+      if (nw[g.id] > 0 && playing.length) {
+        const unranked = playing.filter((p) => rankToElo(g, p.ratings && p.ratings[g.id], wide) == null);
+        if (playing.length - unranked.length < 2) push('warn', 'warn.fewRanked', { game: g.name });
+        else if (unranked.length) push('info', 'info.unranked', { names: nameList(unranked), game: g.name });
+      }
+      if (S > 0 && importanceOf(g) > 0) {
+        const noRoles = playing.filter((p) => !(p.roles && p.roles[g.id] && p.roles[g.id].length));
+        if (noRoles.length) push('info', 'info.noRoles', { names: nameList(noRoles), game: g.name });
+      }
+    });
+
+    if (games.length > 1) {
+      const full = players.filter((p) => games.every((g) => playsGame(p, g)));
+      if (!full.length) push('warn', 'warn.nobodyAll');
+      else if (full.length < k) push('warn', 'warn.fewAll', { n: full.length, k });
+      const partial = n - full.length;
+      if (full.length && partial * 2 > n) push('info', 'info.manyPartial', { partial, n });
+    }
+    return out.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);
+  }
+
+  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams, staticWarnings };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TeamMaker = api;
 })(typeof window !== 'undefined' ? window : globalThis);
