@@ -13,6 +13,13 @@
   // plays is true unless set to false
   const playsGame = (person, game) => !(person.plays && person.plays[game.id] === false);
 
+  // team-count scoring, lower is better
+  const UNFILLED_COST = 150;
+  const FILL_COST = 30;
+  const SUB_COST = 30;
+  const TIE_MARGIN = 15; // ties go to more teams
+  const SUGGEST_MARGIN = 25; // margin before suggesting another count
+
   const GAIN = { primary: 1, secondary: 0.85, fill: 0.7, off: 0.15 };
 
   function defaultGames() {
@@ -345,7 +352,80 @@
     return out.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);
   }
 
-  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams, staticWarnings };
+  // lower is better, elo-equivalent points
+  function teamMetrics(res, games) {
+    const k = res.teams.length;
+    const nw = normalizedWeights(games);
+    const roleGames = games.filter((g) => slotCount(g) > 0);
+    let unfilledSlots = 0, unfilledWeighted = 0, bench = 0, partial = 0;
+    res.teams.forEach((t) => {
+      partial += t.players.filter((p) => !p.playsAll).length;
+      t.games.forEach((tg) => {
+        const g = games.find((x) => x.id === tg.id);
+        if (slotCount(g) === 0) return;
+        unfilledSlots += tg.missing.length;
+        unfilledWeighted += tg.missing.length * importanceOf(g);
+        bench += tg.bench.length;
+      });
+    });
+    const fillsPerTeam = partial / k;
+    const subsPerTeam = bench / Math.max(1, roleGames.length) / k;
+    const gameSpreads = res.stats.perGame;
+    const spreadTerm = 0.5 * res.stats.spread + 0.5 * gameSpreads.reduce((s, x) => s + (nw[x.id] || 0) * x.spread, 0);
+    const score = spreadTerm + (UNFILLED_COST * unfilledWeighted) / k + FILL_COST * fillsPerTeam + SUB_COST * subsPerTeam;
+    return {
+      unfilledSlots, subsPerTeam, fillsPerTeam, spread: res.stats.spread,
+      worstGameSpread: gameSpreads.length ? Math.max(...gameSpreads.map((x) => x.spread)) : 0, score,
+    };
+  }
+
+  // prefers more teams when scores are within TIE_MARGIN
+  function planTeams(players, opts) {
+    const { games, autoTeams = false, roleWeight = 0.5 } = opts;
+    const n = players.length;
+    if (n < 2) throw new Error(Copy.plain('err.minPlayers'));
+    const selected = opts.teams || 2;
+    if (!autoTeams && n < selected) throw new Error(Copy.plain('err.needPlayers', { k: selected, n }));
+
+    const maxK = Math.max(2, Math.min(10, n, Math.floor(n / 3)));
+    const top = autoTeams ? maxK : Math.max(maxK, selected);
+    const quick = { ...opts, roleWeight: Math.max(roleWeight, 0.3), restarts: n > 20 ? 5 : 8 };
+    const rows = [];
+    for (let k = 2; k <= top && k <= n; k++) {
+      rows.push({ k, rosterMin: Math.floor(n / k), rosterMax: Math.ceil(n / k), ...teamMetrics(buildTeams(players, { ...quick, teams: k }), games) });
+    }
+    const pickBest = () => {
+      const min = Math.min(...rows.map((r) => r.score));
+      return rows.filter((r) => r.score <= min + TIE_MARGIN).reduce((a, b) => (b.k > a.k ? b : a));
+    };
+    const chosenK = autoTeams ? pickBest().k : selected;
+
+    const result = buildTeams(players, { ...opts, teams: chosenK });
+    const chosenRow = rows.find((r) => r.k === chosenK);
+    Object.assign(chosenRow, teamMetrics(result, games));
+    const recommended = autoTeams ? chosenK : pickBest().k;
+    const rec = rows.find((r) => r.k === recommended);
+
+    const advice = [];
+    if (!autoTeams && recommended !== chosenK && rec.score + SUGGEST_MARGIN < chosenRow.score) {
+      if (recommended < chosenK) {
+        const size = rec.rosterMin === rec.rosterMax ? rec.rosterMin : `${rec.rosterMin}–${rec.rosterMax}`;
+        advice.push(msg('warn', rec.unfilledSlots === 0 ? 'advice.fewerTeamsFull' : 'advice.fewerTeams',
+          { k: chosenK, n, empty: chosenRow.unfilledSlots, rec: recommended, size, recEmpty: rec.unfilledSlots }));
+      } else {
+        advice.push(msg('info', 'advice.moreTeams', {
+          rec: recommended, k: chosenK, subs: fmt(chosenRow.subsPerTeam), fills: fmt(chosenRow.fillsPerTeam),
+          recSubs: fmt(rec.subsPerTeam), recFills: fmt(rec.fillsPerTeam),
+        }));
+      }
+    }
+    if (chosenRow.spread > 100 || chosenRow.worstGameSpread > 200) {
+      advice.push(msg('warn', 'advice.uneven', { gap: Math.round(chosenRow.spread), worst: Math.round(chosenRow.worstGameSpread) }));
+    }
+    return { result, analysis: { chosenK, recommended, rows, advice } };
+  }
+
+  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams, staticWarnings, teamMetrics, planTeams };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TeamMaker = api;
 })(typeof window !== 'undefined' ? window : globalThis);

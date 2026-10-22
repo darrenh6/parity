@@ -102,6 +102,11 @@
     "warn.nobodyAll": "Nobody plays every game, so every team will be made up of players who skip some games.",
     "warn.fewAll": "Only {n} {n:player plays|players play} every game, which is fewer than your {k} teams, so some teams won't have anyone who covers every game.",
     "info.manyPartial": "{partial} of {n} players skip at least one game, so teams will rely on backups.",
+    "advice.fewerTeams": "{k} teams isn't a good fit for {n} players: {empty} role {empty:spot|spots} would be empty. Try {rec} teams instead ({size} players each), where only {recEmpty} would be empty.",
+    "advice.fewerTeamsFull": "{k} teams isn't a good fit for {n} players: {empty} role {empty:spot|spots} would be empty. Try {rec} teams instead ({size} players each), where every role would be covered.",
+    "advice.moreTeams": "You have enough players for {rec} teams. With {k} teams, each team carries about {subs} extra players and {fills} players who skip some games; with {rec} teams that drops to {recSubs} and {recFills}.",
+    "advice.uneven": "Even the best split leaves one team about {gap} skill points ahead of another overall ({worst} in the most uneven game). The group is too small or too uneven to make fair teams.",
+    "err.minPlayers": "Add at least 2 players to make teams.",
     "err.needPlayers": "Add at least {k} players to make {k} teams (you have {n}).",
     "err.minTeams": "Choose at least 2 teams."
   };

@@ -254,3 +254,41 @@ test('a clean pool produces no warnings', () => {
   assert.deepStrictEqual(T.staticWarnings(fullPool(15), { games, teams: 3 }), []);
 });
 
+test('suggests fewer teams with larger rosters when the selected count leaves roles empty', () => {
+  const { analysis } = T.planTeams(fullPool(12), { games, teams: 3 });
+  assert.strictEqual(analysis.recommended, 2);
+  assert.ok(analysis.advice.some((a) => a.level === 'warn' && /Try 2 teams instead/.test(a.text)), texts(analysis.advice));
+});
+
+test('suggests more teams when rosters are padded with spares', () => {
+  const { analysis } = T.planTeams(fullPool(20), { games, teams: 2 });
+  assert.strictEqual(analysis.recommended, 4);
+  assert.ok(analysis.advice.some((a) => /enough players for 4 teams/.test(a.text)), texts(analysis.advice));
+});
+
+test('auto team count picks the full-lineup count, favoring more teams', () => {
+  assert.strictEqual(T.planTeams(fullPool(15), { games, autoTeams: true }).analysis.chosenK, 3);
+  assert.strictEqual(T.planTeams(fullPool(20), { games, autoTeams: true }).analysis.chosenK, 4);
+  assert.strictEqual(T.planTeams(fullPool(25), { games, autoTeams: true }).analysis.chosenK, 5);
+});
+
+test('with many part-time players the planner still builds teams and stays within sensible team counts', () => {
+  const outs = [['lol'], ['ow'], ['val'], ['ow', 'val'], ['lol', 'val'], ['lol', 'ow']];
+  const players = Array.from({ length: 20 }, (_, i) => (i < 8 ? full(i) : { ...full(i), plays: Object.fromEntries(outs[i % 6].map((g) => [g, false])) }));
+  const { result, analysis } = T.planTeams(players, { games, autoTeams: true });
+  assert.strictEqual(result.teams.reduce((s, t) => s + t.players.length, 0), 20);
+  assert.ok(analysis.chosenK >= 2 && analysis.chosenK <= 6);
+  assert.strictEqual(analysis.rows.find((r) => r.k === analysis.chosenK).k, analysis.chosenK);
+});
+
+test('flags a pool too small or lopsided for a fair match', () => {
+  const lopsided = [...Array.from({ length: 2 }, (_, i) => ({ ...full(i), ratings: { lol: { tier: 'Diamond', division: 1 }, ow: { tier: 'Diamond', division: 1 }, val: { tier: 'Ascendant', division: 3 } } })),
+    ...Array.from({ length: 2 }, (_, i) => ({ ...full(i + 2), ratings: { lol: { tier: 'Iron', division: 4 }, ow: { tier: 'Bronze', division: 5 }, val: { tier: 'Iron', division: 1 } } }))];
+  const { analysis } = T.planTeams(lopsided.slice(0, 3), { games, teams: 2 });
+  assert.ok(analysis.advice.some((a) => /too small or too uneven/.test(a.text)), texts(analysis.advice));
+});
+
+test('rejects bad input', () => {
+  assert.throws(() => T.planTeams(fullPool(1), { games }));
+  assert.throws(() => T.planTeams(fullPool(3), { games, teams: 4 }));
+});

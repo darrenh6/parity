@@ -21,7 +21,7 @@
   ];
 
   let state = load();
-  let result = null, error = '';
+  let result = null, analysis = null, error = '';
 
   function fresh() {
     return { games: T.defaultGames(), players: [], wide: false, teams: 2, roleWeight: 0.5, seed: 0 };
@@ -184,7 +184,7 @@
     if (state.players.length < 2) return '';
     const k = state.teams;
     const list = T.staticWarnings(state.players, { games: state.games, teams: k, wide: state.wide })
-      .concat([]);
+      .concat(analysis ? analysis.advice : []);
     list.sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level));
     return `<section>
       <h2>${t('checks.heading')}</h2>
@@ -283,12 +283,13 @@
       } else if (act === 'generate') {
         state.seed += 1;
         try {
-          result = T.buildTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, roleWeight: state.roleWeight, seed: state.seed });
+          ({ result, analysis } = T.planTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, roleWeight: state.roleWeight, seed: state.seed }));
           error = '';
-        } catch (err) { result = null; error = err.message; }
+        } catch (err) { result = null; analysis = null; error = err.message; }
       } else return;
     } else return;
 
+    if (act !== 'generate') analysis = null; // old advice is stale after any edit
     save();
     render();
   }
