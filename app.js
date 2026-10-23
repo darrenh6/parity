@@ -24,7 +24,7 @@
   let result = null, analysis = null, error = '';
 
   function fresh() {
-    return { games: T.defaultGames(), players: [], wide: false, teams: 2, roleWeight: 0.5, seed: 0 };
+    return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, roleWeight: 0.5, seed: 0 };
   }
   function load() {
     try {
@@ -156,9 +156,12 @@
         <h2><span class="step">3</span> ${t('settings.heading')}</h2>
         <div class="field">
           <label><b>${t('teams.label')}</b>
-            <input type="number" min="2" max="10" value="${state.teams}" data-act="teams"></label>
-          <span class="hint">${t('teams.hint')}</span>
+            <input type="number" min="2" max="10" value="${state.teams}" data-act="teams" ${state.autoTeams ? 'disabled' : ''}></label>
+          <span class="hint">${t(state.autoTeams ? 'teams.hintAuto' : 'teams.hint')}</span>
         </div>
+        <label class="toggle field-toggle"><input type="checkbox" data-act="auto" ${state.autoTeams ? 'checked' : ''}>
+          <span><b>${t('auto.title')}</b>
+          <span class="hint">${t('auto.hint')}</span></span></label>
         <div class="field">
           <b>${t('priority.title')}</b>
           <div class="scale"><span>${t('priority.left')}</span>
@@ -182,7 +185,7 @@
   const ICON = { error: '⛔', warn: '⚠️', info: 'ℹ️' };
   function checksHtml() {
     if (state.players.length < 2) return '';
-    const k = state.teams;
+    const k = state.autoTeams && analysis ? analysis.chosenK : state.teams;
     const list = T.staticWarnings(state.players, { games: state.games, teams: k, wide: state.wide })
       .concat(analysis ? analysis.advice : []);
     list.sort((a, b) => ['error', 'warn', 'info'].indexOf(a.level) - ['error', 'warn', 'info'].indexOf(b.level));
@@ -190,7 +193,7 @@
       <h2>${t('checks.heading')}</h2>
       <p class="muted">${t('checks.intro')}</p>
       ${list.length ? `<ul class="warnings">${list.map((w) => `<li class="${w.level}"><span>${ICON[w.level]}</span> ${t(w.key, w.vars)}</li>`).join('')}</ul>`
-        : `<p class="good">${t('checks.okTeams', { k })}</p>`}
+        : `<p class="good">${state.autoTeams ? t('checks.okAuto') : t('checks.okTeams', { k })}</p>`}
     </section>`;
   }
 
@@ -253,6 +256,7 @@
 
     if (e.type === 'change') {
       if (act === 'wide') state.wide = el.checked;
+      else if (act === 'auto') state.autoTeams = el.checked;
       else if (act === 'teams') state.teams = Math.min(10, Math.max(2, Math.round(Number(el.value)) || 2));
       else if (act === 'plays') { p.plays = p.plays || {}; if (el.checked) delete p.plays[g.id]; else p.plays[g.id] = false; }
       else if (act === 'name') p.name = el.value.trim();
@@ -283,7 +287,7 @@
       } else if (act === 'generate') {
         state.seed += 1;
         try {
-          ({ result, analysis } = T.planTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, roleWeight: state.roleWeight, seed: state.seed }));
+          ({ result, analysis } = T.planTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, autoTeams: state.autoTeams, roleWeight: state.roleWeight, seed: state.seed }));
           error = '';
         } catch (err) { result = null; analysis = null; error = err.message; }
       } else return;
