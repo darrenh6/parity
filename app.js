@@ -21,6 +21,7 @@
   ];
 
   let state = load();
+  normalizeWeights();
   let result = null, analysis = null, error = '';
 
   function fresh() {
@@ -40,8 +41,35 @@
   }
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const COLORS = ['#3d6fc4', '#1f3a73', '#6b8be0', '#6a5acd', '#2f5f9e', '#8aa0e8', '#4a4fa3'];
   const pct = (g) => Math.round(g.weight * 100);
 
+  function apportion(vals, total) {
+    const floors = vals.map(Math.floor);
+    let rem = total - floors.reduce((a, b) => a + b, 0);
+    vals.map((v, i) => [v - floors[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (rem > 0) { floors[i]++; rem--; } });
+    return floors;
+  }
+  function setPercents(ints) { state.games.forEach((g, i) => { g.weight = ints[i] / 100; }); }
+  function normalizeWeights() {
+    const n = state.games.length;
+    if (!n) return;
+    const total = state.games.reduce((a, g) => a + Math.max(0, g.weight), 0);
+    setPercents(apportion(state.games.map((g) => (total > 0 ? (Math.max(0, g.weight) / total) * 100 : 100 / n)), 100));
+  }
+  // others shrink in proportion, total stays 100
+  function setWeight(id, v) {
+    const others = state.games.filter((g) => g.id !== id);
+    const rest = 100 - v;
+    const os = others.reduce((a, g) => a + pct(g), 0);
+    const ints = apportion(others.map((g) => (os > 0 ? (pct(g) * rest) / os : rest / others.length)), rest);
+    others.forEach((g, i) => { g.weight = ints[i] / 100; });
+    gameById(id).weight = v / 100;
+  }
+  function stackHtml() {
+    return state.games.map((g, i) => pct(g) > 0
+      ? `<span style="flex:${pct(g)};background:${COLORS[i % COLORS.length]}" title="${esc(g.name)} ${pct(g)}%">${pct(g) >= 12 ? esc(g.name) + ' ' + pct(g) + '%' : ''}</span>` : '').join('');
+  }
   const gameById = (id) => state.games.find((g) => g.id === id);
   const rankKey = (r) => (r ? `${r.tier}|${r.division == null ? '' : r.division}` : '');
   function parseRank(v) {
@@ -92,13 +120,16 @@
       <section>
         <h2><span class="step">1</span> ${t('games.heading')}</h2>
         <p class="muted">${t('games.intro')}</p>
+        <div class="muted stacklabel">${t('game.countsLabel')}</div>
+        <div class="stack" id="stack">${stackHtml()}</div>
+        <div class="row" style="margin:20px 0 28px"><button data-act="even">${t('games.makeEqual')}</button></div>
         <div class="grid">
           ${state.games.map((g, gi) => `
             <div class="game">
               <header><span>${esc(g.name)}</span>
                 <button class="link" title="${attr('game.removeTip')}" data-act="delgame" data-g="${g.id}">${t('game.remove')}</button></header>
               <div class="muted">${t('game.countsLabel')}</div>
-              <div class="wrow"><input type="range" min="0" max="100" step="1" value="${pct(g)}" ${''} data-act="weight" data-g="${g.id}" aria-label="${attr('game.countsAria', { game: g.name })}">
+              <div class="wrow"><input type="range" min="0" max="100" step="1" value="${pct(g)}" ${state.games.length < 2 ? 'disabled' : ''} data-act="weight" data-g="${g.id}" aria-label="${attr('game.countsAria', { game: g.name })}">
                 <b data-wl="${g.id}">${pct(g)}%</b></div>
               ${(g.roles || []).length ? `
                 <div class="muted">${t('game.rolesLabel')} <b data-il="${g.id}">${t(importanceKey(g.roleImportance == null ? 1 : g.roleImportance))}</b></div>
@@ -239,8 +270,12 @@
 
     // no re-render, keeps dragging smooth
     if (isInput && act === 'weight') {
-      g.weight = Number(el.value) / 100;
-      document.querySelector(`[data-wl="${g.id}"]`).textContent = pct(g) + '%';
+      setWeight(g.id, Number(el.value));
+      state.games.forEach((x) => {
+        document.querySelector(`[data-wl="${x.id}"]`).textContent = pct(x) + '%';
+        document.querySelector(`input[data-act="weight"][data-g="${x.id}"]`).value = pct(x);
+      });
+      document.getElementById('stack').innerHTML = stackHtml();
       return save();
     }
     if (isInput && act === 'importance') {
@@ -265,8 +300,10 @@
     } else if (e.type === 'click') {
       if (act === 'addplayer') state.players.push({ id: newId('p'), name: C.plain('players.defaultName', { n: state.players.length + 1 }), ratings: {}, roles: {}, plays: {} });
       else if (act === 'delplayer') state.players = state.players.filter((x) => x !== p);
+      else if (act === 'even') setPercents(apportion(state.games.map(() => 100 / state.games.length), 100));
       else if (act === 'delgame') {
         state.games = state.games.filter((x) => x !== g);
+        normalizeWeights();
         state.players.forEach((pl) => { delete pl.ratings[g.id]; delete pl.roles[g.id]; if (pl.plays) delete pl.plays[g.id]; });
       } else if (act === 'role') {
         const list = (p.roles[g.id] = p.roles[g.id] || []);
@@ -314,7 +351,8 @@
     });
     const n = Math.max(1, Math.round(Number(f.get('divs'))) || 1);
     const gid = newId('g');
-    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 1 / 3, divisions: n, divisionsAscend: f.get('asc') === 'on', tiers, apex: list(f.get('apex')), roles, roleImportance: 1 });
+    state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 0, divisions: n, divisionsAscend: f.get('asc') === 'on', tiers, apex: list(f.get('apex')), roles, roleImportance: 1 });
+    setWeight(gid, Math.round(100 / state.games.length));
     save();
     render();
   });

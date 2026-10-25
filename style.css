@@ -47,6 +47,8 @@ button.chip.on { background: var(--accent); border-color: var(--accent); color: 
 .chip.miss { border-color: var(--bad); color: var(--bad); }
 td .chips { margin-top: 4px; max-width: 220px; white-space: normal; }
 
+.stack { display: flex; height: 32px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.stack span { color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; transition: flex .1s; }
 .wrow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .wrow input { flex: 1; }
 .wrow b { width: 42px; text-align: right; font-variant-numeric: tabular-nums; }

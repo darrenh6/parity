@@ -5,6 +5,7 @@
     "app.subtitle": "This tool was built for boated minecraft's inaugural winter games.",
     "games.heading": "Games",
     "games.intro": "Which games are in your tournament? Drag the slider to measure how much a game should count when judging a player's overall skill. Games where one player can win alone, like Valorant, can count for less than games like League of Legends.",
+    "games.makeEqual": "Make all games count equally",
     "game.remove": "Remove",
     "game.removeTip": "Remove this game",
     "game.countsLabel": "How much this game counts",
