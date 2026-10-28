@@ -62,6 +62,7 @@ label.plays { font-size: 12px; color: var(--muted); display: flex; gap: 4px; ali
 .warnings li.error { border-left-color: var(--bad); }
 .warnings li.warn { border-left-color: var(--warn); }
 .warnings li.info { border-left-color: var(--accent); color: var(--muted); }
+tr.chosen td { background: var(--soft); }
 details summary { cursor: pointer; color: var(--muted); }
 
 .step { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 14px; align-items: center; justify-content: center; margin-right: 6px; }

@@ -228,6 +228,22 @@
     </section>`;
   }
 
+  function compareHtml() {
+    const { rows, chosenK, recommended } = analysis;
+    const f = (x) => Math.round(x * 10) / 10;
+    return `<details style="margin-top:12px"><summary>${t('compare.summary')}</summary>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${t('compare.col.teams')}</th><th>${t('compare.col.size')}</th><th title="${attr('compare.tip.empty')}">${t('compare.col.empty')}</th><th title="${attr('compare.tip.extra')}">${t('compare.col.extra')}</th><th title="${attr('compare.tip.skip')}">${t('compare.col.skip')}</th><th title="${attr('compare.tip.gap')}">${t('compare.col.gap')}</th><th title="${attr('compare.tip.fit')}">${t('compare.col.fit')}</th></tr></thead>
+        <tbody>${rows.map((r) => `<tr${r.k === chosenK ? ' class="chosen"' : ''}>
+          <td>${r.k}${r.k === chosenK ? ' ' + t('compare.used') : ''}${r.k === recommended && r.k !== chosenK ? ' ' + t('compare.better') : ''}</td>
+          <td>${r.rosterMin === r.rosterMax ? r.rosterMin : r.rosterMin + '–' + r.rosterMax}</td>
+          <td class="num">${r.unfilledSlots}</td><td class="num">${f(r.subsPerTeam)}</td><td class="num">${f(r.fillsPerTeam)}</td>
+          <td class="num">${Math.round(r.spread)}</td><td class="num">${Math.round(r.score)}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <p class="muted">${t('compare.note')}</p>
+    </details>`;
+  }
+
   const VERDICT = { good: 'verdict.good', ok: 'verdict.ok', bad: 'verdict.bad' };
   const verdictOf = (gap) => (gap < 40 ? 'good' : gap < 100 ? 'ok' : 'bad');
 
@@ -255,7 +271,7 @@
           </div>`).join('')}
       </div>
       <p class="muted" style="margin-top:8px">${t('team.allGame', { counts: stats.allGameCounts.join(' / ') })}</p>
-      `;
+      ${analysis ? compareHtml() : ''}`;
   }
 
   function newId(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
