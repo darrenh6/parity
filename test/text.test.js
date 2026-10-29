@@ -10,6 +10,11 @@ test('fills in values and escapes them for the page', () => {
   assert.strictEqual(Text.t('info.unranked', { names: '<i>Al</i>', game: 'LoL' }), '&lt;i&gt;Al&lt;/i&gt;: no LoL rank entered, so average skill is assumed there.');
 });
 
+test('**double stars** become bold on the page and vanish in plain text', () => {
+  assert.ok(Text.t('how.step4').startsWith('Press <b>&quot;Make teams&quot;.</b>'));
+  assert.ok(!Text.plain('how.step4').includes('*'));
+});
+
 test('{n:one|many} switches between singular and plural', () => {
   assert.strictEqual(Text.plain('result.rolesMissing', { n: 1 }), '1 role across all teams has nobody to play it.');
   assert.strictEqual(Text.plain('result.rolesMissing', { n: 3 }), '3 roles across all teams have nobody to play them.');

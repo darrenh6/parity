@@ -3,6 +3,12 @@
   const COPY = {
     "app.title": "Parity",
     "app.subtitle": "This tool was built for boated minecraft's inaugural winter games.",
+    "how.summary": "Guide",
+    "how.step1": "Choose your games (League, Overwatch, and Valorant by default).",
+    "how.step2": "Add your players and assign their ranks and roles for each game.",
+    "how.step3": "Choose how many teams you want, or let Parity decide.",
+    "how.step4": "Press **\"Make teams\".** Parity converts ranks into ELO and compares teams on overall ELO, ELO in each game, and whether every role has someone to play it. It then tries thousands of arrangements and shows the fairest one.",
+    "how.note": "ELO is a number worked out from a player's rank: higher means stronger. It lets Gold in one game be compared fairly with Gold in another. Scores are only used for balancing, they're not an official rating.",
     "games.heading": "Games",
     "games.intro": "Which games are in your tournament? Drag the slider to measure how much a game should count when judging a player's overall skill. Games where one player can win alone, like Valorant, can count for less than games like League of Legends.",
     "games.makeEqual": "Make all games count equally",

@@ -117,6 +117,17 @@
       <h1>${t('app.title')}</h1>
       <p class="sub">${t('app.subtitle')}</p>
 
+      <details class="how">
+        <summary>${t('how.summary')}</summary>
+        <ol>
+          <li>${t('how.step1')}</li>
+          <li>${t('how.step2')}</li>
+          <li>${t('how.step3')}</li>
+          <li>${t('how.step4')}</li>
+        </ol>
+        <p class="muted">${t('how.note')}</p>
+      </details>
+
       <section>
         <h2><span class="step">1</span> ${t('games.heading')}</h2>
         <p class="muted">${t('games.intro')}</p>

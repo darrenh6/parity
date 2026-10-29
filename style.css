@@ -76,6 +76,7 @@ details summary { cursor: pointer; color: var(--muted); }
 details.how, details.addgame-box { margin-bottom: 22px; background: var(--card); border-radius: 6px; padding: 12px 20px; box-shadow: 0 6px 22px rgba(31, 58, 115, .10); }
 details.addgame-box { margin: 14px 0 0; padding: 8px 14px; box-shadow: none; background: var(--field); border: 1px solid var(--line); }
 details summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+details.how ol { padding-left: 20px; margin: 8px 0; }
 .addgame { display: grid; gap: 10px; margin-top: 10px; }
 .addgame label { display: grid; gap: 4px; font-size: 13px; }
 .addgame label.toggle { display: flex; }
