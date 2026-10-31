@@ -87,3 +87,7 @@ details.how ol { padding-left: 20px; margin: 8px 0; }
 .verdict.good { border-left-color: var(--good); color: var(--text); }
 .verdict.ok { border-left-color: var(--warn); }
 .verdict.bad { border-left-color: var(--bad); }
+
+.empty.nogames { display: flex; justify-content: center; padding: 32px; margin-bottom: 8px; }
+details[hidden] { display: none; }
+button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }

@@ -22,7 +22,7 @@
 
   let state = load();
   normalizeWeights();
-  let result = null, analysis = null, error = '';
+  let result = null, analysis = null, error = '', addOpen = false;
 
   function fresh() {
     return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, roleWeight: 0.5, seed: 0 };
@@ -31,6 +31,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (s && Array.isArray(s.games) && Array.isArray(s.players)) { const st = { ...fresh(), ...s };
+        if (!st.games.length) st.games = T.defaultGames(); // no games saved means defaults on reload
         st.games.forEach((g) => { if (g.id === 'val' && g.divisionsAscend === undefined) g.divisionsAscend = true; });
         return st; }
     } catch (e) { /* corrupt storage, start fresh */ }
@@ -131,9 +132,10 @@
       <section>
         <h2><span class="step">1</span> ${t('games.heading')}</h2>
         <p class="muted">${t('games.intro')}</p>
-        <div class="muted stacklabel">${t('game.countsLabel')}</div>
+        ${state.games.length ? `<div class="muted stacklabel">${t('game.countsLabel')}</div>
         <div class="stack" id="stack">${stackHtml()}</div>
-        <div class="row" style="margin:20px 0 28px"><button data-act="even">${t('games.makeEqual')}</button></div>
+        <div class="row" style="margin:20px 0 28px"><button data-act="even">${t('games.makeEqual')}</button></div>` : `
+        <div class="empty nogames"><button class="primary" data-act="showaddgame">${t('addgame.button')}</button></div>`}
         <div class="grid">
           ${state.games.map((g, gi) => `
             <div class="game">
@@ -154,7 +156,7 @@
           <span><b>${t('wide.title')}</b> ${t('wide.examples')}
           <span class="hint">${t('wide.hint')}</span></span></label>
 
-        <details class="addgame-box">
+        <details class="addgame-box" ${addOpen ? 'open' : ''} ${!state.games.length && !addOpen ? 'hidden' : ''}>
           <summary>${t('addgame.summary')}</summary>
           <form class="addgame" data-act="addgame">
             <label>${t('addgame.name')} <input type="text" name="name" placeholder="${attr('addgame.namePh')}" required></label>
@@ -217,7 +219,7 @@
 
       <section>
         <h2><span class="step">4</span> ${t('make.heading')}</h2>
-        <div class="row"><button class="primary" data-act="generate">${t(result ? 'make.again' : 'make.button')}</button>
+        <div class="row"><button class="primary" data-act="generate" ${state.games.length ? '' : 'disabled'}>${t(result ? 'make.again' : 'make.button')}</button>
           ${result ? `<span class="muted">${t('make.againHint')}</span>` : ''}</div>
         ${error ? `<p class="error">${esc(error)}</p>` : ''}
         ${result ? renderResult() : ''}
@@ -327,6 +329,7 @@
     } else if (e.type === 'click') {
       if (act === 'addplayer') state.players.push({ id: newId('p'), name: C.plain('players.defaultName', { n: state.players.length + 1 }), ratings: {}, roles: {}, plays: {} });
       else if (act === 'delplayer') state.players = state.players.filter((x) => x !== p);
+      else if (act === 'showaddgame') addOpen = true;
       else if (act === 'even') setPercents(apportion(state.games.map(() => 100 / state.games.length), 100));
       else if (act === 'delgame') {
         state.games = state.games.filter((x) => x !== g);
@@ -380,6 +383,7 @@
     const gid = newId('g');
     state.games.push({ id: gid, name: String(f.get('name')).trim(), weight: 0, divisions: n, divisionsAscend: f.get('asc') === 'on', tiers, apex: list(f.get('apex')), roles, roleImportance: 1 });
     setWeight(gid, Math.round(100 / state.games.length));
+    addOpen = false;
     save();
     render();
   });
