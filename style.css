@@ -99,6 +99,11 @@ details.how ol { padding-left: 20px; margin: 8px 0; }
 .verdict.ok { border-left-color: var(--warn); }
 .verdict.bad { border-left-color: var(--bad); }
 
+/* swap banner.jpg to change the picture */
+.banner { max-width: 1060px; height: clamp(170px, 28vw, 300px); margin: 28px auto 0; border-radius: 6px; box-shadow: 0 6px 22px rgba(31, 58, 115, .12);
+  background: url("banner.jpg") center / cover no-repeat, linear-gradient(135deg, var(--bg2), var(--soft)); }
+.banner + main { padding-top: 24px; }
+
 .empty.nogames { display: flex; justify-content: center; padding: 32px; margin-bottom: 8px; }
 details[hidden] { display: none; }
 button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
