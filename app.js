@@ -136,19 +136,26 @@
         <div class="stack" id="stack">${stackHtml()}</div>
         <div class="row" style="margin:20px 0 28px"><button data-act="even">${t('games.makeEqual')}</button></div>` : `
         <div class="empty nogames"><button class="primary" data-act="showaddgame">${t('addgame.button')}</button></div>`}
-        <div class="grid">
+        <div class="games">
           ${state.games.map((g, gi) => `
-            <div class="game">
+            <div class="game" style="--gc:${COLORS[gi % COLORS.length]}">
               <header><span>${esc(g.name)}</span>
                 <button class="link" title="${attr('game.removeTip')}" data-act="delgame" data-g="${g.id}">${t('game.remove')}</button></header>
-              <div class="muted">${t('game.countsLabel')}</div>
-              <div class="wrow"><input type="range" min="0" max="100" step="1" value="${pct(g)}" ${state.games.length < 2 ? 'disabled' : ''} data-act="weight" data-g="${g.id}" aria-label="${attr('game.countsAria', { game: g.name })}">
-                <b data-wl="${g.id}">${pct(g)}%</b></div>
+              <div class="gcol">
+                <div class="muted">${t('game.countsLabel')}</div>
+                <div class="wrow"><input type="range" min="0" max="100" step="1" value="${pct(g)}" ${state.games.length < 2 ? 'disabled' : ''} data-act="weight" data-g="${g.id}" aria-label="${attr('game.countsAria', { game: g.name })}">
+                  <b data-wl="${g.id}">${pct(g)}%</b></div>
+              </div>
               ${(g.roles || []).length ? `
-                <div class="muted">${t('game.rolesLabel')} <b data-il="${g.id}">${t(importanceKey(g.roleImportance == null ? 1 : g.roleImportance))}</b></div>
-                <div class="wrow"><input type="range" min="0" max="1" step="0.05" value="${g.roleImportance == null ? 1 : g.roleImportance}" data-act="importance" data-g="${g.id}" aria-label="${attr('game.rolesAria', { game: g.name })}"></div>
-                <div class="muted">${t('game.needs', { roles: rolesText(g) })}</div>` : `<div class="muted">${t('game.noRoles')}</div>`}
-              <div class="muted">${t('game.ranks', { ladder: ladderText(g) })}</div>
+                <div class="gcol">
+                  <div class="muted">${t('game.rolesLabel')} <b data-il="${g.id}">${t(importanceKey(g.roleImportance == null ? 1 : g.roleImportance))}</b></div>
+                  <div class="wrow"><input type="range" min="0" max="1" step="0.05" value="${g.roleImportance == null ? 1 : g.roleImportance}" data-act="importance" data-g="${g.id}" aria-label="${attr('game.rolesAria', { game: g.name })}"></div>
+                </div>
+                <div class="ginfo"><div class="muted">${t('game.needs', { roles: rolesText(g) })}</div>
+                  <div class="muted">${t('game.ranks', { ladder: ladderText(g) })}</div></div>` : `
+                <div class="gcol"></div>
+                <div class="ginfo"><div class="muted">${t('game.noRoles')}</div>
+                  <div class="muted">${t('game.ranks', { ladder: ladderText(g) })}</div></div>`}
             </div>`).join('')}
         </div>
 
