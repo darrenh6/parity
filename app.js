@@ -229,8 +229,23 @@
         <div class="row"><button class="primary" data-act="generate" ${state.games.length ? '' : 'disabled'}>${t(result ? 'make.again' : 'make.button')}</button>
           ${result ? `<span class="muted">${t('make.againHint')}</span>` : ''}</div>
         ${error ? `<p class="error">${esc(error)}</p>` : ''}
-        ${result ? renderResult() : ''}
+        ${result ? renderResult() : ghostTeams()}
       </section>`;
+  }
+
+  function ghostTeams() {
+    const k = Math.min(10, Math.max(2, state.teams));
+    const slots = (g) => (g.roles || []).flatMap((r) => Array.from({ length: r.slots || 1 }, () => r.name));
+    return `<div class="teams ghost" aria-hidden="true">
+      ${Array.from({ length: k }, (_, i) => `
+        <div class="team">
+          <h3><span>${t('team.title', { i: i + 1 })}</span></h3>
+          ${state.games.map((g, gi) => `
+            <div class="gline"><b>${esc(g.name)}</b>
+              <div class="chips">${slots(g).map((name) => `<span class="chip slot">${esc(name)}</span>`).join('')}</div>
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>`;
   }
 
   const ICON = { error: '⛔', warn: '⚠️', info: 'ℹ️' };

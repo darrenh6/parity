@@ -112,6 +112,14 @@ details.how ol { padding-left: 20px; margin: 8px 0; }
 .game .ginfo { display: grid; gap: 4px; }
 @media (max-width: 1040px) { .game { grid-template-columns: 1fr 1fr; } .game header, .game .ginfo { grid-column: 1 / -1; } }
 @media (max-width: 640px) { .game { grid-template-columns: 1fr; } }
+.teams.ghost { margin-top: 24px; }
+.ghost .team { background: transparent; border: 2px dashed var(--line); border-top: 2px dashed var(--line); box-shadow: none; }
+.ghost .team h3 { color: var(--muted); }
+.ghost .team h3::after { content: ""; }
+.ghost .gline { border-top: 1px dashed var(--line); }
+.ghost .gline b { color: var(--muted); font-weight: 500; }
+.chip.slot { background: transparent; border: 1.5px dashed var(--line); color: var(--muted); }
+
 .empty.nogames { display: flex; justify-content: center; padding: 32px; margin-bottom: 8px; }
 details[hidden] { display: none; }
 button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
