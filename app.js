@@ -104,6 +104,8 @@
     }).join('')}</div>`;
   }
 
+  // one tick per 0.05 step
+  const ticks = '<div class="ticks" aria-hidden="true">' + '<i></i>'.repeat(21) + '</div>';
   const importanceKey = (v) => (v < 0.25 ? 'game.importance.low' : v < 0.6 ? 'game.importance.mid' : 'game.importance.high');
   const ladderText = (g) => (state.wide && g.apex.length
     ? C.plain('game.ladderApex', { low: g.tiers[0], high: g.tiers[g.tiers.length - 1], apex: g.apex.join(', ') })
@@ -149,7 +151,7 @@
               ${(g.roles || []).length ? `
                 <div class="gcol">
                   <div class="muted">${t('game.rolesLabel')} <b data-il="${g.id}">${t(importanceKey(g.roleImportance == null ? 1 : g.roleImportance))}</b></div>
-                  <div class="wrow"><input type="range" min="0" max="1" step="0.05" value="${g.roleImportance == null ? 1 : g.roleImportance}" data-act="importance" data-g="${g.id}" aria-label="${attr('game.rolesAria', { game: g.name })}"></div>
+                  <div class="wrow"><div class="rangewrap"><input type="range" min="0" max="1" step="0.05" value="${g.roleImportance == null ? 1 : g.roleImportance}" data-act="importance" data-g="${g.id}" aria-label="${attr('game.rolesAria', { game: g.name })}">${ticks}</div></div>
                 </div>
                 <div class="ginfo"><div class="muted">${t('game.needs', { roles: rolesText(g) })}</div>
                   <div class="muted">${t('game.ranks', { ladder: ladderText(g) })}</div></div>` : `
@@ -216,7 +218,7 @@
         <div class="field">
           <b>${t('priority.title')}</b>
           <div class="scale"><span>${t('priority.left')}</span>
-            <input type="range" min="0" max="1" step="0.05" value="${state.roleWeight}" data-act="roleWeight" aria-label="${attr('priority.aria')}">
+            <div class="rangewrap"><input type="range" min="0" max="1" step="0.05" value="${state.roleWeight}" data-act="roleWeight" aria-label="${attr('priority.aria')}">${ticks}</div>
             <span>${t('priority.right')}</span></div>
           <span class="hint">${t('priority.hint')}</span>
         </div>

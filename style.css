@@ -131,3 +131,8 @@ button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
 .game .wrow input[data-act=weight] { accent-color: var(--gc, var(--accent)); }
 .game .wrow b[data-wl] { color: var(--gc, var(--accent)); font-size: 20px; width: 56px; }
 .game .dot { width: 14px; height: 14px; }
+
+.rangewrap { flex: 1; min-width: 0; }
+.rangewrap input[type=range] { width: 100%; display: block; margin: 0; }
+.ticks { display: flex; justify-content: space-between; padding: 0 8px; margin-top: 2px; pointer-events: none; }
+.ticks i { width: 1.5px; height: 6px; background: var(--muted); opacity: .55; border-radius: 1px; }
