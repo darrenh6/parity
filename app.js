@@ -33,6 +33,7 @@
       if (s && Array.isArray(s.games) && Array.isArray(s.players)) { const st = { ...fresh(), ...s };
         if (!st.games.length) st.games = T.defaultGames(); // no games saved means defaults on reload
         st.games.forEach((g) => { if (g.id === 'val' && g.divisionsAscend === undefined) g.divisionsAscend = true; });
+        st.games.forEach((g) => { if (g.id === 'ow' && !g.tiers.includes('Emerald')) g.tiers.splice(g.tiers.indexOf('Diamond'), 0, 'Emerald'); });
         return st; }
     } catch (e) { /* corrupt storage, start fresh */ }
     return fresh();

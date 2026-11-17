@@ -31,7 +31,7 @@
         roles: [{ name: 'Top', slots: 1 }, { name: 'Jungle', slots: 1 }, { name: 'Mid', slots: 1 },
                 { name: 'Bot', slots: 1 }, { name: 'Support', slots: 1 }] },
       { id: 'ow', name: 'Overwatch', weight: third, divisions: 5, roleImportance: 1,
-        tiers: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'],
+        tiers: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Emerald', 'Diamond'],
         apex: ['Master', 'Grandmaster', 'Champion'],
         roles: [{ name: 'Tank', slots: 1 }, { name: 'DPS', slots: 2 }, { name: 'Support', slots: 2 }] },
       { id: 'val', name: 'Valorant', weight: third, divisions: 3, divisionsAscend: true, roleImportance: 0.3,
