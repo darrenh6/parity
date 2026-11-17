@@ -231,7 +231,7 @@ const texts = (w) => w.map((x) => x.text).join('\n');
 test('warns when a game does not have enough players for the selected team count', () => {
   const players = [...fullPool(6), ...Array.from({ length: 6 }, (_, i) => ({ ...full(i + 6), plays: { val: false } }))];
   const w = T.staticWarnings(players, { games, teams: 3 });
-  assert.ok(w.some((x) => x.level === 'warn' && /Valorant: 3 teams need 15 players .* only 6 play it, .* 9 role spots/.test(x.text)), texts(w));
+  assert.ok(w.some((x) => x.level === 'error' && /Valorant: 3 teams need 15 players .* only 6 play it, .* 9 role spots/.test(x.text)), texts(w));
 });
 
 test('errors when there are fewer players than teams or a team cannot field a game', () => {
@@ -291,4 +291,12 @@ test('flags a pool too small or lopsided for a fair match', () => {
 test('rejects bad input', () => {
   assert.throws(() => T.planTeams(fullPool(1), { games }));
   assert.throws(() => T.planTeams(fullPool(3), { games, teams: 4 }));
+});
+
+test('a team count that leaves a game short is an error and is never picked automatically', () => {
+  const outs = [['lol'], ['lol'], ['lol'], ['lol'], ['ow'], ['val'], ['val']];
+  const players = Array.from({ length: 22 }, (_, i) => (i < 15 ? full(i) : { ...full(i), plays: Object.fromEntries(outs[i - 15].map((g) => [g, false])) }));
+  assert.ok(T.staticWarnings(players, { games, teams: 4 }).some((x) => x.level === 'error' && /League of Legends: 4 teams need 20/.test(x.text)));
+  assert.strictEqual(T.planTeams(players, { games, autoTeams: true }).analysis.chosenK, 3);
+  assert.ok(T.planTeams(players, { games, teams: 4 }).analysis.advice.some((a) => /Try 3 teams instead/.test(a.text)));
 });

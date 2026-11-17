@@ -112,6 +112,10 @@
     : C.plain('game.ladder', { low: g.tiers[0], high: g.tiers[g.tiers.length - 1] }));
   const rolesText = (g) => (g.roles || []).map((r) => (r.slots > 1 ? `${r.slots} ${r.name}` : r.name)).join(', ');
 
+  // auto mode picks its own count
+  const blocked = () => !state.games.length || (!state.autoTeams && state.players.length > 1
+    && T.staticWarnings(state.players, { games: state.games, teams: state.teams, wide: state.wide }).some((w) => w.level === 'error'));
+
   function render() {
     const everyGame = state.players.filter((p) => state.games.every((g) => T.playsGame(p, g))).length;
     const app = document.getElementById('app');
@@ -228,7 +232,7 @@
 
       <section>
         <h2><span class="step">4</span> ${t('make.heading')}</h2>
-        <div class="row"><button class="primary" data-act="generate" ${state.games.length ? '' : 'disabled'}>${t(result ? 'make.again' : 'make.button')}</button>
+        <div class="row"><button class="primary" data-act="generate" ${blocked() ? 'disabled' : ''}>${t(result ? 'make.again' : 'make.button')}</button>
           ${result ? `<span class="muted">${t('make.againHint')}</span>` : ''}</div>
         ${error ? `<p class="error">${esc(error)}</p>` : ''}
         ${result ? renderResult() : ghostTeams()}

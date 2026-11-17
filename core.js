@@ -329,7 +329,7 @@
       if (S > 0 && n >= k) {
         const need = k * S;
         if (playing.length < k) push('error', 'warn.gameNobody', { game: g.name, n: playing.length, missing: k - playing.length, k });
-        else if (playing.length < need) push('warn', 'warn.gameShort', { game: g.name, k, need, n: playing.length, missing: need - playing.length });
+        else if (playing.length < need) push('error', 'warn.gameShort', { game: g.name, k, need, n: playing.length, missing: need - playing.length });
       }
       if (nw[g.id] > 0 && playing.length) {
         const unranked = playing.filter((p) => rankToElo(g, p.ratings && p.ratings[g.id], wide) == null);
@@ -390,13 +390,16 @@
     const maxK = Math.max(2, Math.min(10, n, Math.floor(n / 3)));
     const top = autoTeams ? maxK : Math.max(maxK, selected);
     const quick = { ...opts, roleWeight: Math.max(roleWeight, 0.3), restarts: n > 20 ? 5 : 8 };
+    // short games can't be played by k teams
+    const canField = (k) => games.every((g) => slotCount(g) === 0 || players.filter((p) => playsGame(p, g)).length >= k * slotCount(g));
     const rows = [];
     for (let k = 2; k <= top && k <= n; k++) {
-      rows.push({ k, rosterMin: Math.floor(n / k), rosterMax: Math.ceil(n / k), ...teamMetrics(buildTeams(players, { ...quick, teams: k }), games) });
+      rows.push({ k, playable: canField(k), rosterMin: Math.floor(n / k), rosterMax: Math.ceil(n / k), ...teamMetrics(buildTeams(players, { ...quick, teams: k }), games) });
     }
     const pickBest = () => {
-      const min = Math.min(...rows.map((r) => r.score));
-      return rows.filter((r) => r.score <= min + TIE_MARGIN).reduce((a, b) => (b.k > a.k ? b : a));
+      const pool = rows.some((r) => r.playable) ? rows.filter((r) => r.playable) : rows;
+      const min = Math.min(...pool.map((r) => r.score));
+      return pool.filter((r) => r.score <= min + TIE_MARGIN).reduce((a, b) => (b.k > a.k ? b : a));
     };
     const chosenK = autoTeams ? pickBest().k : selected;
 
@@ -407,7 +410,7 @@
     const rec = rows.find((r) => r.k === recommended);
 
     const advice = [];
-    if (!autoTeams && recommended !== chosenK && rec.score + SUGGEST_MARGIN < chosenRow.score) {
+    if (!autoTeams && recommended !== chosenK && (!chosenRow.playable || rec.score + SUGGEST_MARGIN < chosenRow.score)) {
       if (recommended < chosenK) {
         const size = rec.rosterMin === rec.rosterMax ? rec.rosterMin : `${rec.rosterMin}–${rec.rosterMax}`;
         advice.push(msg('warn', rec.unfilledSlots === 0 ? 'advice.fewerTeamsFull' : 'advice.fewerTeams',
