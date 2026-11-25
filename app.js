@@ -22,7 +22,7 @@
 
   let state = load();
   normalizeWeights();
-  let result = null, analysis = null, error = '', addOpen = false;
+  let result = null, analysis = null, error = '', importError = false, addOpen = false;
 
   function fresh() {
     return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, roleWeight: 0.5, seed: 0 };
@@ -207,7 +207,11 @@
           <button data-act="addplayer">${t('players.add')}</button>
           <button data-act="sample">${t('players.sample')}</button>
           ${state.players.length ? `<button data-act="clear">${t('players.clear')}</button>` : ''}
+          <button data-act="export" ${state.players.length ? '' : 'disabled'}>${t('players.export')}</button>
+          <button data-act="import">${t('players.import')}</button>
+          <input type="file" id="import-file" data-act="importfile" accept=".json,application/json" hidden>
         </div>
+        ${importError ? `<p class="error">${t('players.importError')}</p>` : ''}
       </section>
 
       <section>
@@ -316,6 +320,45 @@
       ${analysis ? compareHtml() : ''}`;
   }
 
+  function exportPlayers() {
+    const data = { players: state.players.map(({ name, ratings, roles, plays }) => ({ name, ratings, roles, plays })) };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'parity-players.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importPlayers(text) {
+    let data = null;
+    try { data = JSON.parse(text); } catch (e) { /* not json */ }
+    const list = Array.isArray(data) ? data : data && data.players;
+    importError = !Array.isArray(list) || !list.length;
+    if (!importError) {
+      list.forEach((raw) => {
+        if (!raw || typeof raw !== 'object') return;
+        const ratings = {}, roles = {}, plays = {};
+        state.games.forEach((g) => {
+          const r = raw.ratings && raw.ratings[g.id];
+          if (r && (g.tiers.includes(r.tier) || g.apex.includes(r.tier))) {
+            const apex = g.apex.includes(r.tier);
+            ratings[g.id] = { tier: r.tier, division: apex ? null : Math.min(g.divisions, Math.max(1, Math.round(r.division) || 1)) };
+          }
+          const picked = raw.roles && raw.roles[g.id];
+          const known = Array.isArray(picked) ? picked.filter((n) => (g.roles || []).some((x) => x.name === n)) : [];
+          if (known.length) roles[g.id] = known;
+          if (raw.plays && raw.plays[g.id] === false) plays[g.id] = false;
+        });
+        const name = String(raw.name || '').trim().slice(0, 60);
+        state.players.push({ id: newId('p'), name: name || C.plain('players.defaultName', { n: state.players.length + 1 }), ratings, roles, plays });
+      });
+    }
+    analysis = null;
+    save();
+    render();
+  }
+
   function newId(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 
   function handle(e) {
@@ -352,6 +395,12 @@
       else if (act === 'auto') state.autoTeams = el.checked;
       else if (act === 'teams') state.teams = Math.min(10, Math.max(2, Math.round(Number(el.value)) || 2));
       else if (act === 'plays') { p.plays = p.plays || {}; if (el.checked) delete p.plays[g.id]; else p.plays[g.id] = false; }
+      else if (act === 'importfile') {
+        const file = el.files[0];
+        el.value = '';
+        if (file) file.text().then(importPlayers);
+        return;
+      }
       else if (act === 'name') p.name = el.value.trim();
       else if (act === 'rank') { const r = parseRank(el.value); if (r) p.ratings[g.id] = r; else delete p.ratings[g.id]; }
       else return;
@@ -371,7 +420,9 @@
         else if (i >= 0) list.splice(i, 1);
         else list.push(name);
         if (!list.length) delete p.roles[g.id];
-      } else if (act === 'clear') { if (!window.confirm(C.plain('players.clearConfirm'))) return; state.players = []; }
+      } else if (act === 'export') { exportPlayers(); return; }
+      else if (act === 'import') { document.getElementById('import-file').click(); return; }
+      else if (act === 'clear') { if (!window.confirm(C.plain('players.clearConfirm'))) return; state.players = []; }
       else if (act === 'sample') {
         SAMPLE.forEach(([name, r, roles, out]) => {
           const ratings = {}, rl = {}, plays = {};
@@ -390,6 +441,7 @@
     } else return;
 
     if (act !== 'generate') analysis = null; // old advice is stale after any edit
+    importError = false;
     save();
     render();
   }
