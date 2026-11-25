@@ -300,3 +300,27 @@ test('a team count that leaves a game short is an error and is never picked auto
   assert.strictEqual(T.planTeams(players, { games, autoTeams: true }).analysis.chosenK, 3);
   assert.ok(T.planTeams(players, { games, teams: 4 }).analysis.advice.some((a) => /Try 3 teams instead/.test(a.text)));
 });
+
+test('a roster that fits every game exactly is split so nobody is benched', () => {
+  const G = ['lol', 'ow', 'val'];
+  const slotsFor = { lol: ['Top', 'Jungle', 'Mid', 'Bot', 'Support'], ow: ['Tank', 'DPS', 'DPS', 'Support', 'Support'], val: ['Duelist', 'Initiator', 'Controller', 'Sentinel', 'Flex'] };
+  const shapes = [[['lol', 'ow'], ['ow', 'val'], ['lol'], ['val']], [['lol', 'ow'], ['lol', 'val'], ['ow'], ['val']], [['lol', 'val'], ['ow', 'val'], ['lol'], ['ow']]];
+  for (let trial = 1; trial <= 6; trial++) {
+    const rng = seeded(trial * 7);
+    const pickTier = (g) => ({ tier: g.tiers[Math.floor(rng() * g.tiers.length)], division: 1 + Math.floor(rng() * g.divisions) });
+    const players = [];
+    for (let team = 0; team < 3; team++) {
+      const kinds = [G, G, G, ...shapes[(trial + team) % shapes.length]];
+      const roles = kinds.map(() => ({}));
+      G.forEach((g) => kinds.forEach((kind, i) => { if (kind.includes(g)) roles[i][g] = [slotsFor[g][kinds.slice(0, i).filter((k2) => k2.includes(g)).length]]; }));
+      kinds.forEach((kind, i) => players.push({
+        name: `T${team}P${i}`, roles: roles[i],
+        ratings: Object.fromEntries(G.map((g, gi) => [g, pickTier(games[gi])])),
+        plays: Object.fromEntries(G.filter((g) => !kind.includes(g)).map((g) => [g, false])),
+      }));
+    }
+    const { teams } = T.buildTeams(players.sort(() => rng() - 0.5), { games, teams: 3, seed: trial });
+    const loose = teams.reduce((s, t) => s + t.games.reduce((x, g) => x + g.bench.length + g.missing.length, 0), 0);
+    assert.strictEqual(loose, 0, `trial ${trial} left ${loose} backups or empty roles`);
+  }
+});

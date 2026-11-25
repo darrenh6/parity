@@ -9,6 +9,7 @@
   // bonus beats any role-fit gap
   const PRIORITY_BONUS = 6;
   const FULL_PENALTY = 150;
+  const BENCH_COST = 100;
 
   // plays is true unless set to false
   const playsGame = (person, game) => !(person.plays && person.plays[game.id] === false);
@@ -220,6 +221,15 @@
       }
       return v;
     };
+    const benchGames = games.filter((g) => slotCount(g) > 0);
+    const benchPlays = benchGames.map((g) => players.map((p) => playsGame(p, g)));
+    const benched = (assign) => {
+      const have = benchGames.map(() => new Array(k).fill(0));
+      assign.forEach((t, i) => benchGames.forEach((_, gi) => { if (benchPlays[gi][i]) have[gi][t]++; }));
+      let b = 0;
+      benchGames.forEach((g, gi) => have[gi].forEach((a) => { b += Math.max(0, a - slotCount(g)); }));
+      return b;
+    };
     const cost = (assign) => {
       let c = 0.5 * avgStd(assign, ratings, k).std;
       perGame.forEach((pg) => { c += 0.5 * pg.w * avgStd(assign, pg.elos, k, pg.inc).std; });
@@ -231,6 +241,7 @@
         });
       }
       if (mixed) c += FULL_PENALTY * avgStd(assign, fullVals, k).std;
+      c += BENCH_COST * benched(assign);
       return c;
     };
 
