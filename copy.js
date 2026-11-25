@@ -74,6 +74,8 @@
     "teams.hintAuto": "Parity will choose this for you.",
     "auto.title": "Let Parity decide the number of teams",
     "auto.hint": "Parity tries different numbers of teams and uses the one where every role has a player and the teams are most even. If two choices are about equally good, it picks the one with more, smaller teams.",
+    "cover.title": "Make every player play at least one game",
+    "cover.hint": "Players who would sit out every game are put in the game where their rank is highest, if there is room.",
     "priority.title": "What matters more?",
     "priority.left": "Even skill",
     "priority.right": "Every role covered",

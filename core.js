@@ -10,6 +10,8 @@
   const PRIORITY_BONUS = 6;
   const FULL_PENALTY = 150;
   const BENCH_COST = 100;
+  const COVER_BONUS = 5;
+  const IDLE_COST = 150;
 
   // plays is true unless set to false
   const playsGame = (person, game) => !(person.plays && person.plays[game.id] === false);
@@ -101,7 +103,7 @@
   }
 
   // exact dp over slots. gain excludes the priority bonus
-  function assignTeam(members, game, allGames) {
+  function assignTeam(members, game, allGames, extra) {
     const cands = members.filter((m) => playsGame(m, game));
     const units = [];
     ((game && game.roles) || []).forEach((r) => {
@@ -111,7 +113,7 @@
     if (!S) return { gain: 0, ideal: 0, assigned: [], bench: [], missing: [] };
 
     const bonus = cands.map((m) => (allGames && allGames.length
-      ? (PRIORITY_BONUS * allGames.filter((g) => playsGame(m, g)).length) / allGames.length : 0));
+      ? (PRIORITY_BONUS * allGames.filter((g) => playsGame(m, g)).length) / allGames.length : 0) + (extra ? extra(m) : 0));
     const base = cands.map((m) => {
       const pr = (m.roles && m.roles[game.id]) || [];
       return units.map((u) => {
@@ -153,6 +155,31 @@
     return { gain, ideal: S, assigned, bench, missing };
   }
 
+  // lineups for every game at once so players left out of all of them get a spot where they rank highest
+  function assignJoint(members, games, allGames, eloOf) {
+    const lineups = games.map((g) => assignTeam(members, g, allGames));
+    const same = (x, y) => x.assigned.length === y.assigned.length && x.assigned.every((a, i) => a.player === y.assigned[i].player && a.role === y.assigned[i].role);
+    for (let pass = 0; pass < 4; pass++) {
+      let changed = false;
+      games.forEach((g, gi) => {
+        const elsewhere = new Set();
+        lineups.forEach((a, j) => { if (j !== gi) a.assigned.forEach((x) => elsewhere.add(x.player)); });
+        const extra = (m) => {
+          if (elsewhere.has(m)) return 0;
+          const elo = eloOf(m, g);
+          return COVER_BONUS + (elo == null ? 0 : (elo - BASE) / SPAN);
+        };
+        const next = assignTeam(members, g, allGames, extra);
+        if (!same(next, lineups[gi])) { lineups[gi] = next; changed = true; }
+      });
+      if (!changed) break;
+    }
+    const used = new Set();
+    lineups.forEach((a) => a.assigned.forEach((x) => used.add(x.player)));
+    const idle = members.filter((m) => !used.has(m) && games.some((g) => playsGame(m, g))).length;
+    return { lineups, idle };
+  }
+
   function mulberry32(seed) {
     let a = seed >>> 0;
     return function () {
@@ -179,7 +206,7 @@
 
   // minimizes skew, role shortfall and uneven all-game counts
   function buildTeams(players, opts) {
-    const { games, wide = false, teams: k = 2, roleWeight = 0.5, seed = 1 } = opts;
+    const { games, wide = false, teams: k = 2, roleWeight = 0.5, seed = 1, cover = false } = opts;
     const n = players.length;
     if (k < 2) throw new Error(Copy.plain('err.minTeams'));
     if (n < k) throw new Error(Copy.plain('err.needPlayers', { k, n }));
@@ -208,10 +235,26 @@
     const mixed = isFull.some((f) => f) && isFull.some((f) => !f);
 
     // swap touches two teams, rest hit cache
-    const cache = new Map();
-    const shortfall = (assign, t, g) => {
+    const eloOf = (m, g) => rankToElo(g, m.ratings && m.ratings[g.id], wide);
+    const jointCache = new Map();
+    const jointFor = (idx) => {
+      const key = idx.join(',');
+      let j = jointCache.get(key);
+      if (!j) { j = assignJoint(idx.map((i) => players[i]), games, games, eloOf); jointCache.set(key, j); }
+      return j;
+    };
+    const membersOf = (assign, t) => {
       const idx = [];
       for (let i = 0; i < n; i++) if (assign[i] === t) idx.push(i);
+      return idx;
+    };
+    const cache = new Map();
+    const shortfall = (assign, t, g) => {
+      const idx = membersOf(assign, t);
+      if (cover) {
+        const a = jointFor(idx).lineups[games.indexOf(g)];
+        return a.ideal - a.gain;
+      }
       const key = g.id + ':' + idx.join(',');
       let v = cache.get(key);
       if (v === undefined) {
@@ -242,6 +285,7 @@
       }
       if (mixed) c += FULL_PENALTY * avgStd(assign, fullVals, k).std;
       c += BENCH_COST * benched(assign);
+      if (cover) for (let t = 0; t < k; t++) c += IDLE_COST * jointFor(membersOf(assign, t)).idle;
       return c;
     };
 
@@ -287,9 +331,9 @@
         gamesPlayed: games.filter((g) => playsGame(players[i], g)).map((g) => g.name),
       })).sort((x, y) => y.playsAll - x.playsAll || y.rating - x.rating),
       avg: comp.avgs[t],
-      games: games.map((g) => {
+      games: games.map((g, gi) => {
         const ga = gameAvgs.find((x) => x.pg.game === g);
-        const a = assignTeam(idx.map((i) => players[i]), g, games);
+        const a = cover ? jointFor(idx).lineups[gi] : assignTeam(idx.map((i) => players[i]), g, games);
         return {
           id: g.id, name: g.name, avg: ga ? ga.avgs[t] : null,
           assigned: a.assigned.map((x) => ({ name: x.player.name, role: x.role })),

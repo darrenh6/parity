@@ -25,7 +25,7 @@
   let result = null, analysis = null, error = '', importError = false, addOpen = false;
 
   function fresh() {
-    return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, roleWeight: 0.5, seed: 0 };
+    return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, coverAll: false, roleWeight: 0.5, seed: 0 };
   }
   function load() {
     try {
@@ -224,6 +224,9 @@
         <label class="toggle field-toggle"><input type="checkbox" data-act="auto" ${state.autoTeams ? 'checked' : ''}>
           <span><b>${t('auto.title')}</b>
           <span class="hint">${t('auto.hint')}</span></span></label>
+        <label class="toggle field-toggle"><input type="checkbox" data-act="cover" ${state.coverAll ? 'checked' : ''}>
+          <span><b>${t('cover.title')}</b>
+          <span class="hint">${t('cover.hint')}</span></span></label>
         <div class="field">
           <b>${t('priority.title')}</b>
           <div class="scale"><span>${t('priority.left')}</span>
@@ -393,6 +396,7 @@
     if (e.type === 'change') {
       if (act === 'wide') state.wide = el.checked;
       else if (act === 'auto') state.autoTeams = el.checked;
+      else if (act === 'cover') state.coverAll = el.checked;
       else if (act === 'teams') state.teams = Math.min(10, Math.max(2, Math.round(Number(el.value)) || 2));
       else if (act === 'plays') { p.plays = p.plays || {}; if (el.checked) delete p.plays[g.id]; else p.plays[g.id] = false; }
       else if (act === 'importfile') {
@@ -434,7 +438,7 @@
       } else if (act === 'generate') {
         state.seed += 1;
         try {
-          ({ result, analysis } = T.planTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, autoTeams: state.autoTeams, roleWeight: state.roleWeight, seed: state.seed }));
+          ({ result, analysis } = T.planTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, autoTeams: state.autoTeams, cover: state.coverAll, roleWeight: state.roleWeight, seed: state.seed }));
           error = '';
         } catch (err) { result = null; analysis = null; error = err.message; }
       } else return;

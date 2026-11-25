@@ -27,7 +27,7 @@ test('text that cannot be filled in is left visible and unknown keys show their 
 
 test('every key used by the code exists, and every key in copy.js is used', () => {
   const src = ['app.js', 'core.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')).join('\n');
-  const used = new Set([...src.matchAll(/'((?:app|how|games|game|wide|addgame|players|rank|role|settings|teams|auto|priority|checks|make|verdict|result|team|compare|warn|info|advice|err)\.[\w.]+)'/g)].map((m) => m[1]));
+  const used = new Set([...src.matchAll(/'((?:app|how|games|game|wide|addgame|players|rank|role|settings|teams|auto|cover|priority|checks|make|verdict|result|team|compare|warn|info|advice|err)\.[\w.]+)'/g)].map((m) => m[1]));
   used.forEach((k) => assert.ok(k in COPY, `missing from copy.js: ${k}`));
   Object.keys(COPY).forEach((k) => assert.ok(used.has(k), `unused in code: ${k}`));
 });

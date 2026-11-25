@@ -324,3 +324,18 @@ test('a roster that fits every game exactly is split so nobody is benched', () =
     assert.strictEqual(loose, 0, `trial ${trial} left ${loose} backups or empty roles`);
   }
 });
+
+test('with cover on every player starts at least one game when there is room', () => {
+  const G = ['lol', 'ow', 'val'];
+  const rng = seeded(5);
+  const players = Array.from({ length: 24 }, (_, i) => ({
+    name: `C${i}`,
+    ratings: Object.fromEntries(G.map((g, gi) => [g, { tier: games[gi].tiers[Math.floor(rng() * games[gi].tiers.length)], division: 1 + Math.floor(rng() * games[gi].divisions) }])),
+    roles: { lol: [['Top', 'Jungle', 'Mid', 'Bot', 'Support'][i % 5]], ow: [['Tank', 'DPS', 'Support'][i % 3]], val: [['Duelist', 'Initiator', 'Controller', 'Sentinel'][i % 4]] },
+  }));
+  const idleCount = (res) => res.teams.reduce((s, t) => s + t.players.filter((p) => !t.games.some((g) => g.assigned.some((a) => a.name === p.name))).length, 0);
+  const on = T.buildTeams(players, { games, teams: 2, cover: true });
+  assert.strictEqual(idleCount(on), 0);
+  assert.ok(idleCount(T.buildTeams(players, { games, teams: 2 })) >= idleCount(on));
+  assert.ok(on.stats.spread < 60, `spread ${on.stats.spread}`);
+});
