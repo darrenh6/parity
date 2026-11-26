@@ -365,3 +365,14 @@ test('a backup shares a spot with one lineup player and both count toward the av
     assert.ok(Math.abs(slots.reduce((x, y) => x + y, 0) / slots.length - g.avg) < 1e-6);
   }));
 });
+
+test('a shared spot goes to the two closest players', () => {
+  const lolG = games[0];
+  const rk = (tier) => ({ tier, division: 2 });
+  const team = [mk('a', [], 'Top', rk('Iron')), mk('b', [], 'Jungle', rk('Bronze')), mk('c', [], 'Mid', rk('Silver')),
+                mk('d', [], 'Bot', rk('Gold')), mk('e', [], 'Support', rk('Platinum')),
+                mk('spare', [], undefined, rk('Gold'))];
+  const r = T.assignTeam(team, lolG, games);
+  assert.strictEqual(r.subs.length, 1);
+  assert.strictEqual(r.subs[0].player.name, 'd');
+});

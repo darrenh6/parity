@@ -163,19 +163,29 @@
       const pr = (b.roles && b.roles[game.id]) || [];
       return !pr.length || accepts(a.role).some((r) => pr.includes(r));
     };
-    const taken = new Array(assigned.length).fill(-1);
-    const tryBench = (bi, seen) => {
-      for (let ai = 0; ai < assigned.length; ai++) {
-        if (seen[ai] || !fits(bench[bi], assigned[ai])) continue;
-        seen[ai] = true;
-        if (taken[ai] < 0 || tryBench(taken[ai], seen)) { taken[ai] = bi; return true; }
-      }
-      return false;
-    };
-    bench.forEach((_, bi) => tryBench(bi, []));
-    const subs = [], left = [];
-    taken.forEach((bi, ai) => { if (bi >= 0) subs.push({ player: assigned[ai].player, sub: bench[bi] }); });
-    bench.forEach((b, bi) => { if (!taken.includes(bi)) left.push(b); });
+    // most pairs first, then the closest skill between the two sharing a spot
+    const skill = (m) => { const e = rankToElo(game, m.ratings && m.ratings[game.id], true); return e == null ? BASE + SPAN / 2 : e; };
+    const A = assigned.length, B = bench.length;
+    const key = (n, c) => n * 1e6 - c;
+    let dp = new Map([[0, { v: 0, pick: [] }]]);
+    bench.forEach((bp, bi) => {
+      const next = new Map(dp);
+      dp.forEach((st, m) => {
+        for (let ai = 0; ai < A; ai++) {
+          if (m & (1 << ai) || !fits(bp, assigned[ai])) continue;
+          const nm = m | (1 << ai);
+          const v = st.v + key(1, Math.abs(skill(bp) - skill(assigned[ai].player)));
+          const cur = next.get(nm);
+          if (!cur || v > cur.v) next.set(nm, { v, pick: st.pick.concat([[bi, ai]]) });
+        }
+      });
+      dp = next;
+    });
+    let top = null;
+    dp.forEach((st) => { if (!top || st.v > top.v) top = st; });
+    const subs = top.pick.map(([bi, ai]) => ({ player: assigned[ai].player, sub: bench[bi] }));
+    const used = new Set(top.pick.map(([bi]) => bi));
+    const left = bench.filter((_, bi) => !used.has(bi));
     return { gain, ideal: S, assigned, bench: left, subs, missing };
   }
 
