@@ -8,6 +8,9 @@
 
   // bonus beats any role-fit gap
   const PRIORITY_BONUS = 6;
+  // flagged players win lineup spots over everyone else
+  const PLAYER_BONUS = 50;
+  const PLAYER_COST = 300;
   const FULL_PENALTY = 150;
   const BENCH_COST = 100;
   const COVER_BONUS = 5;
@@ -113,7 +116,7 @@
     if (!S) return { gain: 0, ideal: 0, assigned: [], bench: [], missing: [] };
 
     const bonus = cands.map((m) => (allGames && allGames.length
-      ? (PRIORITY_BONUS * allGames.filter((g) => playsGame(m, g)).length) / allGames.length : 0) + (extra ? extra(m) : 0));
+      ? (PRIORITY_BONUS * allGames.filter((g) => playsGame(m, g)).length) / allGames.length : 0) + (m.priority ? PLAYER_BONUS : 0) + (extra ? extra(m) : 0));
     const base = cands.map((m) => {
       const pr = (m.roles && m.roles[game.id]) || [];
       return units.map((u) => {
@@ -289,6 +292,7 @@
       benchGames.forEach((g, gi) => have[gi].forEach((a) => { b += Math.max(0, a - slotCount(g)); }));
       return b;
     };
+    const hasPriority = players.some((p) => p.priority);
     const overallMask = (masks) => players.map((_, i) => masks.some((m) => m[i]));
     const cost = (assign) => {
       const masks = perGame.map((pg) => lineMask(assign, pg));
@@ -303,6 +307,7 @@
       }
       if (mixed) c += FULL_PENALTY * avgStd(assign, fullVals, k).std;
       c += BENCH_COST * benched(assign);
+      if (hasPriority) perGame.forEach((pg, gi) => { if (slotCount(pg.game)) for (let i = 0; i < n; i++) if (players[i].priority && pg.inc[i] && !masks[gi][i]) c += PLAYER_COST; });
       if (cover) for (let t = 0; t < k; t++) c += IDLE_COST * jointFor(membersOf(assign, t)).idle;
       return c;
     };

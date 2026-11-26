@@ -49,6 +49,8 @@
     "players.col.skill": "Skill score",
     "players.col.skillTip": "A number worked out from their ranks. Higher is stronger.",
     "players.nameAria": "Player name",
+    "players.priority": "Priority",
+    "players.priorityTip": "Gets a lineup spot in every game they play, if there is room.",
     "players.plays": "Plays this game",
     "players.notPlaying": "Not playing this game",
     "players.noRanks": "No ranks yet",

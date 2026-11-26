@@ -194,7 +194,8 @@
             ${state.players.map((p) => {
               const r = T.playerRating(p, state.games, state.wide);
               return `<tr>
-                <td><input type="text" value="${esc(p.name)}" data-act="name" data-p="${p.id}" aria-label="${attr('players.nameAria')}"></td>
+                <td><input type="text" value="${esc(p.name)}" data-act="name" data-p="${p.id}" aria-label="${attr('players.nameAria')}">
+                  <label class="plays" title="${attr('players.priorityTip')}"><input type="checkbox" data-act="priority" data-p="${p.id}" ${p.priority ? 'checked' : ''}> ${t('players.priority')}</label></td>
                 ${state.games.map((g) => { const on = T.playsGame(p, g);
                   return `<td><label class="plays"><input type="checkbox" data-act="plays" data-p="${p.id}" data-g="${g.id}" ${on ? 'checked' : ''}> ${t('players.plays')}</label>
                     ${on ? rankSelect(p, g) + roleChips(p, g) : `<div class="muted">${t('players.notPlaying')}</div>`}</td>`; }).join('')}
@@ -324,7 +325,7 @@
   }
 
   function exportPlayers() {
-    const data = { players: state.players.map(({ name, ratings, roles, plays }) => ({ name, ratings, roles, plays })) };
+    const data = { players: state.players.map(({ name, ratings, roles, plays, priority }) => ({ name, ratings, roles, plays, priority: !!priority })) };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
@@ -354,7 +355,7 @@
           if (raw.plays && raw.plays[g.id] === false) plays[g.id] = false;
         });
         const name = String(raw.name || '').trim().slice(0, 60);
-        state.players.push({ id: newId('p'), name: name || C.plain('players.defaultName', { n: state.players.length + 1 }), ratings, roles, plays });
+        state.players.push({ id: newId('p'), name: name || C.plain('players.defaultName', { n: state.players.length + 1 }), ratings, roles, plays, priority: raw.priority === true });
       });
     }
     analysis = null;
@@ -398,6 +399,7 @@
       else if (act === 'auto') state.autoTeams = el.checked;
       else if (act === 'cover') state.coverAll = el.checked;
       else if (act === 'teams') state.teams = Math.min(10, Math.max(2, Math.round(Number(el.value)) || 2));
+      else if (act === 'priority') p.priority = el.checked;
       else if (act === 'plays') { p.plays = p.plays || {}; if (el.checked) delete p.plays[g.id]; else p.plays[g.id] = false; }
       else if (act === 'importfile') {
         const file = el.files[0];

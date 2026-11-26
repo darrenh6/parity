@@ -350,3 +350,13 @@ test('backups do not count toward a game average', () => {
     assert.ok(Math.abs(avg - g.avg) < 1e-6);
   }));
 });
+
+test('priority players get a lineup spot in every game they play', () => {
+  const players = Array.from({ length: 14 }, (_, i) => ({ ...full(i), priority: i < 3 }));
+  const r = T.buildTeams(players, { games: T.defaultGames(), teams: 2, seed: 5 });
+  const lined = new Set();
+  r.teams.forEach((t) => t.games.forEach((g) => g.assigned.forEach((a) => lined.add(g.id + ':' + a.name))));
+  players.filter((p) => p.priority).forEach((p) => T.defaultGames().forEach((g) => {
+    assert.ok(lined.has(g.id + ':' + p.name), p.name + ' benched in ' + g.id);
+  }));
+});
