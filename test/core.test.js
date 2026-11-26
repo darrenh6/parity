@@ -376,3 +376,9 @@ test('a shared spot goes to the two closest players', () => {
   assert.strictEqual(r.subs.length, 1);
   assert.strictEqual(r.subs[0].player.name, 'd');
 });
+
+test('counts the ways to split players into unlabeled teams', () => {
+  assert.strictEqual(T.countSplits(10, 2), 126n);
+  assert.strictEqual(T.countSplits(6, 3), 15n);
+  assert.strictEqual(T.countSplits(7, 2), 35n);
+});

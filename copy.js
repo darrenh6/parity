@@ -90,6 +90,7 @@
     "make.heading": "Teams",
     "make.button": "Make teams",
     "make.again": "Reroll",
+    "make.splits": "{n} different ways to split these players into {k} teams.",
     "make.againHint": "Splits will be of about equal arrangement.",
     "save.button": "Save this result",
     "save.heading": "Saved results ({n})",

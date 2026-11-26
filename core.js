@@ -531,7 +531,17 @@
     return { result, analysis: { chosenK, recommended, rows, advice } };
   }
 
-  const api = { BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams, staticWarnings, teamMetrics, planTeams };
+  // ways to split n players into k teams of near-equal size, teams unlabeled
+  function countSplits(n, k) {
+    const fact = (x) => { let r = 1n; for (let i = 2n; i <= BigInt(x); i++) r *= i; return r; };
+    const sizes = Array.from({ length: k }, (_, t) => Math.floor(n / k) + (t < n % k ? 1 : 0));
+    let div = 1n;
+    sizes.forEach((z) => { div *= fact(z); });
+    [...new Set(sizes)].forEach((z) => { div *= fact(sizes.filter((x) => x === z).length); });
+    return fact(n) / div;
+  }
+
+  const api = { countSplits, BASE, SPAN, APEX_STEP, defaultGames, rankToElo, ladder, normalizedWeights, playerRating, playsGame, assignTeam, buildTeams, staticWarnings, teamMetrics, planTeams };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TeamMaker = api;
 })(typeof window !== 'undefined' ? window : globalThis);

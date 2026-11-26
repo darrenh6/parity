@@ -241,7 +241,7 @@
 
       <section>
         <h2><span class="step">4</span> ${t('make.heading')}</h2>
-        <div class="row"><button class="primary" data-act="generate" ${blocked() ? 'disabled' : ''}>${t(result ? 'make.again' : 'make.button')}</button>
+        <div class="row"><button class="primary" data-act="generate" title="${splitsTip()}" ${blocked() ? 'disabled' : ''}>${t(result ? 'make.again' : 'make.button')}</button>
           ${result && !viewing ? `<button data-act="saveresult">${t('save.button')}</button>` : ''}
           ${result ? `<span class="muted">${t('make.againHint')}</span>` : ''}</div>
         ${error ? `<p class="error">${esc(error)}</p>` : ''}
@@ -294,6 +294,14 @@
       </table></div>
       <p class="muted">${t('compare.note')}</p>
     </details>`;
+  }
+
+  function splitsTip() {
+    const n = state.players.length, k = result ? result.teams.length : state.teams;
+    if (n < k) return '';
+    const v = T.countSplits(n, k), str = v.toString();
+    const shown = str.length > 15 ? `${str[0]}.${str.slice(1, 3)} × 10^${str.length - 1}` : v.toLocaleString('en-US');
+    return attr('make.splits', { n: shown, k });
   }
 
   function savedHtml() {
