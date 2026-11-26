@@ -11,6 +11,8 @@
   // flagged players win lineup spots over everyone else
   const PLAYER_BONUS = 50;
   const PLAYER_COST = 300;
+  // sharing a spot is fine but a snug fit is still preferred
+  const SHARE_COST = 30;
   const FULL_PENALTY = 150;
   const BENCH_COST = 100;
   const COVER_BONUS = 5;
@@ -113,7 +115,7 @@
       for (let i = 0; i < r.slots; i++) units.push({ role: r.name, accepts: [r.name].concat(r.alsoFilledBy || []) });
     });
     const S = units.length, P = cands.length;
-    if (!S) return { gain: 0, ideal: 0, assigned: [], bench: [], missing: [] };
+    if (!S) return { gain: 0, ideal: 0, assigned: [], bench: [], subs: [], missing: [] };
 
     const bonus = cands.map((m) => (allGames && allGames.length
       ? (PRIORITY_BONUS * allGames.filter((g) => playsGame(m, g)).length) / allGames.length : 0) + (m.priority ? PLAYER_BONUS : 0) + (extra ? extra(m) : 0));
@@ -155,7 +157,26 @@
       else bench.unshift(cands[i]);
     }
     const missing = units.filter((_, j) => !(bestMask & (1 << j))).map((u) => u.role);
-    return { gain, ideal: S, assigned, bench, missing };
+    // each backup covers exactly one lineup player, who then plays only half the matches
+    const accepts = (role) => [role].concat((game.roles.find((r) => r.name === role) || {}).alsoFilledBy || []);
+    const fits = (b, a) => {
+      const pr = (b.roles && b.roles[game.id]) || [];
+      return !pr.length || accepts(a.role).some((r) => pr.includes(r));
+    };
+    const taken = new Array(assigned.length).fill(-1);
+    const tryBench = (bi, seen) => {
+      for (let ai = 0; ai < assigned.length; ai++) {
+        if (seen[ai] || !fits(bench[bi], assigned[ai])) continue;
+        seen[ai] = true;
+        if (taken[ai] < 0 || tryBench(taken[ai], seen)) { taken[ai] = bi; return true; }
+      }
+      return false;
+    };
+    bench.forEach((_, bi) => tryBench(bi, []));
+    const subs = [], left = [];
+    taken.forEach((bi, ai) => { if (bi >= 0) subs.push({ player: assigned[ai].player, sub: bench[bi] }); });
+    bench.forEach((b, bi) => { if (!taken.includes(bi)) left.push(b); });
+    return { gain, ideal: S, assigned, bench: left, subs, missing };
   }
 
   // lineups for every game at once so players left out of all of them get a spot where they rank highest
@@ -178,7 +199,7 @@
       if (!changed) break;
     }
     const used = new Set();
-    lineups.forEach((a) => a.assigned.forEach((x) => used.add(x.player)));
+    lineups.forEach((a) => { a.assigned.forEach((x) => used.add(x.player)); a.subs.forEach((x) => used.add(x.sub)); });
     const idle = members.filter((m) => !used.has(m) && games.some((g) => playsGame(m, g))).length;
     return { lineups, idle };
   }
@@ -198,8 +219,9 @@
     const sums = new Array(k).fill(0), cnt = new Array(k).fill(0);
     let tot = 0, tc = 0;
     assign.forEach((t, i) => {
-      if (inc && !inc[i]) return;
-      sums[t] += vals[i]; cnt[t]++; tot += vals[i]; tc++;
+      const w = inc ? +inc[i] : 1;
+      if (!w) return;
+      sums[t] += vals[i] * w; cnt[t] += w; tot += vals[i] * w; tc += w;
     });
     const gm = tc ? tot / tc : 0;
     const avgs = sums.map((s, t) => (cnt[t] ? s / cnt[t] : gm));
@@ -251,45 +273,36 @@
       for (let i = 0; i < n; i++) if (assign[i] === t) idx.push(i);
       return idx;
     };
-    const cache = new Map();
-    const shortfall = (assign, t, g) => {
-      const idx = membersOf(assign, t);
-      if (cover) {
-        const a = jointFor(idx).lineups[games.indexOf(g)];
-        return a.ideal - a.gain;
-      }
-      const key = g.id + ':' + idx.join(',');
-      let v = cache.get(key);
-      if (v === undefined) {
-        const a = assignTeam(idx.map((i) => players[i]), g, games);
-        v = a.ideal - a.gain;
-        cache.set(key, v);
-      }
-      return v;
-    };
-    const pIndex = new Map(players.map((p, i) => [p, i]));
     const lineCache = new Map();
-    const lineupOf = (idx, g, gi) => {
-      if (!slotCount(g)) return idx.filter((i) => playsGame(players[i], g));
-      if (cover) return jointFor(idx).lineups[gi].assigned.map((x) => pIndex.get(x.player));
+    const lineFor = (idx, g, gi) => {
+      if (cover) return jointFor(idx).lineups[gi];
       const key = g.id + ':' + idx.join(',');
       let v = lineCache.get(key);
-      if (!v) { v = assignTeam(idx.map((i) => players[i]), g, games).assigned.map((x) => pIndex.get(x.player)); lineCache.set(key, v); }
+      if (!v) { v = assignTeam(idx.map((i) => players[i]), g, games); lineCache.set(key, v); }
       return v;
     };
+    const shortfall = (assign, t, g) => {
+      const a = lineFor(membersOf(assign, t), g, games.indexOf(g));
+      return a.ideal - a.gain;
+    };
+    const pIndex = new Map(players.map((p, i) => [p, i]));
+    // 1 for a player in a lineup, 0.5 each for a lineup player and the backup sharing the spot
     const lineMask = (assign, pg) => {
       const gi = games.indexOf(pg.game);
-      const mask = new Array(n).fill(false);
-      for (let t = 0; t < k; t++) lineupOf(membersOf(assign, t), pg.game, gi).forEach((i) => { mask[i] = true; });
+      const mask = new Array(n).fill(0);
+      for (let t = 0; t < k; t++) {
+        const idx = membersOf(assign, t);
+        if (!slotCount(pg.game)) { idx.forEach((i) => { if (pg.inc[i]) mask[i] = 1; }); continue; }
+        const a = lineFor(idx, pg.game, gi);
+        a.assigned.forEach((x) => { mask[pIndex.get(x.player)] = 1; });
+        a.subs.forEach((x) => { mask[pIndex.get(x.player)] = 0.5; mask[pIndex.get(x.sub)] = 0.5; });
+      }
       return mask;
     };
     const benchGames = games.filter((g) => slotCount(g) > 0);
-    const benchPlays = benchGames.map((g) => players.map((p) => playsGame(p, g)));
     const benched = (assign) => {
-      const have = benchGames.map(() => new Array(k).fill(0));
-      assign.forEach((t, i) => benchGames.forEach((_, gi) => { if (benchPlays[gi][i]) have[gi][t]++; }));
       let b = 0;
-      benchGames.forEach((g, gi) => have[gi].forEach((a) => { b += Math.max(0, a - slotCount(g)); }));
+      benchGames.forEach((g) => { const gi = games.indexOf(g); for (let t = 0; t < k; t++) { const a = lineFor(membersOf(assign, t), g, gi); b += a.bench.length + (SHARE_COST / BENCH_COST) * a.subs.length; } });
       return b;
     };
     const hasPriority = players.some((p) => p.priority);
@@ -362,6 +375,7 @@
           id: g.id, name: g.name, avg: ga ? ga.avgs[t] : null,
           assigned: a.assigned.map((x) => ({ name: x.player.name, role: x.role })),
           bench: a.bench.map((x) => x.name),
+          subs: a.subs.map((x) => ({ name: x.player.name, sub: x.sub.name })),
           missing: a.missing,
         };
       }),
@@ -444,7 +458,7 @@
         if (slotCount(g) === 0) return;
         unfilledSlots += tg.missing.length;
         unfilledWeighted += tg.missing.length * importanceOf(g);
-        bench += tg.bench.length;
+        bench += tg.bench.length + tg.subs.length;
       });
     });
     const fillsPerTeam = partial / k;

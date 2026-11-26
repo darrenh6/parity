@@ -314,7 +314,7 @@
               <span class="muted" title="${attr('team.playerTip')}">${pl.rated ? Math.round(pl.rating) : t('team.noRank')}</span></li>`).join('')}</ul>
             ${team.games.map((g) => `
               <div class="gline"><b>${esc(g.name)}</b>${g.avg == null ? '' : ` <span class="muted">${t('team.gameAvg', { n: Math.round(g.avg) })}</span>`}
-                ${g.assigned.length ? `<div class="muted">${g.assigned.map((a) => `${esc(a.role)}: ${esc(a.name || 'Unnamed')}`).join(' · ')}</div>` : ''}
+                ${g.assigned.length ? `<div class="muted">${g.assigned.map((a) => { const s = g.subs.find((x) => x.name === a.name); return `${esc(a.role)}: ${esc(a.name || 'Unnamed')}${s ? ` / ${esc(s.sub || 'Unnamed')}` : ''}`; }).join(' · ')}</div>` : ''}
                 ${g.bench.length ? `<div class="muted">${t('team.backups', { names: g.bench.map((n) => n || 'Unnamed').join(', ') })}</div>` : ''}
                 ${g.missing.length ? `<div class="chips"><span class="muted">${t('team.nobody')}</span>${g.missing.map((r) => `<span class="chip miss">${esc(r)}</span>`).join('')}</div>` : ''}
               </div>`).join('')}

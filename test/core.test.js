@@ -189,7 +189,7 @@ test('all-game players start ahead of partial players when the roster is over-fu
   const team = [mk('full1', [], 'Top'), mk('full2', [], 'Jungle'), mk('full3', [], 'Mid'), mk('full4', [], 'Bot'),
                 mk('full5', [], 'Support'), mk('partial', ['ow', 'val'], 'Top')];
   const r = T.assignTeam(team, lolG, games);
-  assert.deepStrictEqual(r.bench.map((p) => p.name), ['partial']);
+  assert.deepStrictEqual(r.subs.map((x) => x.sub.name), ['partial']);
   assert.strictEqual(r.missing.length, 0);
 });
 
@@ -199,7 +199,7 @@ test('priority holds even when the partial player fits the role better', () => {
                 mk('d', [], 'Support'), mk('partialTop', ['ow', 'val'], 'Top')];
   const r = T.assignTeam(team, lolG, games);
   assert.ok(r.assigned.some((x) => x.player.name === 'fullOff'));
-  assert.deepStrictEqual(r.bench.map((p) => p.name), ['partialTop']);
+  assert.deepStrictEqual(r.subs.map((x) => x.sub.name), ['partialTop']);
 });
 
 test('non-multiple-of-5 pools give uneven rosters with subs, and all-game players are spread evenly', () => {
@@ -340,17 +340,6 @@ test('with cover on every player starts at least one game when there is room', (
   assert.ok(on.stats.spread < 60, `spread ${on.stats.spread}`);
 });
 
-test('backups do not count toward a game average', () => {
-  const players = Array.from({ length: 12 }, (_, i) => full(i));
-  const r = T.buildTeams(players, { games: T.defaultGames(), teams: 2, seed: 3 });
-  r.teams.forEach((t) => t.games.forEach((g) => {
-    if (!g.bench.length) return;
-    const elo = (name) => T.rankToElo(games.find((x) => x.id === g.id), players.find((p) => p.name === name).ratings[g.id], false);
-    const avg = g.assigned.reduce((s, a) => s + elo(a.name), 0) / g.assigned.length;
-    assert.ok(Math.abs(avg - g.avg) < 1e-6);
-  }));
-});
-
 test('priority players get a lineup spot in every game they play', () => {
   const players = Array.from({ length: 14 }, (_, i) => ({ ...full(i), priority: i < 3 }));
   const r = T.buildTeams(players, { games: T.defaultGames(), teams: 2, seed: 5 });
@@ -358,5 +347,21 @@ test('priority players get a lineup spot in every game they play', () => {
   r.teams.forEach((t) => t.games.forEach((g) => g.assigned.forEach((a) => lined.add(g.id + ':' + a.name))));
   players.filter((p) => p.priority).forEach((p) => T.defaultGames().forEach((g) => {
     assert.ok(lined.has(g.id + ':' + p.name), p.name + ' benched in ' + g.id);
+  }));
+});
+
+test('a backup shares a spot with one lineup player and both count toward the average', () => {
+  const lolG = games[0];
+  const team = [mk('a', [], 'Top'), mk('b', [], 'Jungle'), mk('c', [], 'Mid'), mk('d', [], 'Bot'),
+                mk('e', [], 'Support'), mk('spare', ['ow', 'val'], 'Top', { tier: 'Iron', division: 1 })];
+  const r = T.assignTeam(team, lolG, games);
+  assert.strictEqual(r.subs.length, 1);
+  assert.strictEqual(r.bench.length, 0);
+  const players = Array.from({ length: 12 }, (_, i) => full(i));
+  const res = T.buildTeams(players, { games, teams: 2, seed: 3 });
+  res.teams.forEach((t) => t.games.forEach((g) => {
+    const elo = (n) => T.rankToElo(games.find((x) => x.id === g.id), players.find((p) => p.name === n).ratings[g.id], false);
+    const slots = g.assigned.map((a) => { const s = g.subs.find((x) => x.name === a.name); return s ? (elo(a.name) + elo(s.sub)) / 2 : elo(a.name); });
+    assert.ok(Math.abs(slots.reduce((x, y) => x + y, 0) / slots.length - g.avg) < 1e-6);
   }));
 });
