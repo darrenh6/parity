@@ -339,3 +339,14 @@ test('with cover on every player starts at least one game when there is room', (
   assert.ok(idleCount(T.buildTeams(players, { games, teams: 2 })) >= idleCount(on));
   assert.ok(on.stats.spread < 60, `spread ${on.stats.spread}`);
 });
+
+test('backups do not count toward a game average', () => {
+  const players = Array.from({ length: 12 }, (_, i) => full(i));
+  const r = T.buildTeams(players, { games: T.defaultGames(), teams: 2, seed: 3 });
+  r.teams.forEach((t) => t.games.forEach((g) => {
+    if (!g.bench.length) return;
+    const elo = (name) => T.rankToElo(games.find((x) => x.id === g.id), players.find((p) => p.name === name).ratings[g.id], false);
+    const avg = g.assigned.reduce((s, a) => s + elo(a.name), 0) / g.assigned.length;
+    assert.ok(Math.abs(avg - g.avg) < 1e-6);
+  }));
+});

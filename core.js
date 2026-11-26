@@ -264,6 +264,22 @@
       }
       return v;
     };
+    const pIndex = new Map(players.map((p, i) => [p, i]));
+    const lineCache = new Map();
+    const lineupOf = (idx, g, gi) => {
+      if (!slotCount(g)) return idx.filter((i) => playsGame(players[i], g));
+      if (cover) return jointFor(idx).lineups[gi].assigned.map((x) => pIndex.get(x.player));
+      const key = g.id + ':' + idx.join(',');
+      let v = lineCache.get(key);
+      if (!v) { v = assignTeam(idx.map((i) => players[i]), g, games).assigned.map((x) => pIndex.get(x.player)); lineCache.set(key, v); }
+      return v;
+    };
+    const lineMask = (assign, pg) => {
+      const gi = games.indexOf(pg.game);
+      const mask = new Array(n).fill(false);
+      for (let t = 0; t < k; t++) lineupOf(membersOf(assign, t), pg.game, gi).forEach((i) => { mask[i] = true; });
+      return mask;
+    };
     const benchGames = games.filter((g) => slotCount(g) > 0);
     const benchPlays = benchGames.map((g) => players.map((p) => playsGame(p, g)));
     const benched = (assign) => {
@@ -273,9 +289,11 @@
       benchGames.forEach((g, gi) => have[gi].forEach((a) => { b += Math.max(0, a - slotCount(g)); }));
       return b;
     };
+    const overallMask = (masks) => players.map((_, i) => masks.some((m) => m[i]));
     const cost = (assign) => {
-      let c = 0.5 * avgStd(assign, ratings, k).std;
-      perGame.forEach((pg) => { c += 0.5 * pg.w * avgStd(assign, pg.elos, k, pg.inc).std; });
+      const masks = perGame.map((pg) => lineMask(assign, pg));
+      let c = 0.5 * avgStd(assign, ratings, k, overallMask(masks)).std;
+      perGame.forEach((pg, gi) => { c += 0.5 * pg.w * avgStd(assign, pg.elos, k, masks[gi]).std; });
       if (roleWeight > 0) {
         roleGames.forEach((g) => {
           let s = 0;
@@ -316,8 +334,9 @@
       if (cur < bestCost) { bestCost = cur; best = assign.slice(); }
     }
 
-    const comp = avgStd(best, ratings, k);
-    const gameAvgs = perGame.map((pg) => ({ pg, ...avgStd(best, pg.elos, k, pg.inc) }));
+    const bestMasks = perGame.map((pg) => lineMask(best, pg));
+    const comp = avgStd(best, ratings, k, overallMask(bestMasks));
+    const gameAvgs = perGame.map((pg, gi) => ({ pg, ...avgStd(best, pg.elos, k, bestMasks[gi]) }));
     const members = [];
     for (let t = 0; t < k; t++) {
       const idx = [];
