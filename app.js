@@ -22,10 +22,10 @@
 
   let state = load();
   normalizeWeights();
-  let result = null, analysis = null, error = '', importError = false, addOpen = false;
+  let result = null, viewing = null, analysis = null, error = '', importError = false, addOpen = false;
 
   function fresh() {
-    return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, coverAll: false, roleWeight: 0.5, seed: 0 };
+    return { games: T.defaultGames(), players: [], wide: false, teams: 2, autoTeams: false, coverAll: false, roleWeight: 0.5, seed: 0, saved: [] };
   }
   function load() {
     try {
@@ -242,9 +242,11 @@
       <section>
         <h2><span class="step">4</span> ${t('make.heading')}</h2>
         <div class="row"><button class="primary" data-act="generate" ${blocked() ? 'disabled' : ''}>${t(result ? 'make.again' : 'make.button')}</button>
+          ${result && !viewing ? `<button data-act="saveresult">${t('save.button')}</button>` : ''}
           ${result ? `<span class="muted">${t('make.againHint')}</span>` : ''}</div>
         ${error ? `<p class="error">${esc(error)}</p>` : ''}
         ${result ? renderResult() : ghostTeams()}
+        ${savedHtml()}
       </section>`;
   }
 
@@ -292,6 +294,13 @@
       </table></div>
       <p class="muted">${t('compare.note')}</p>
     </details>`;
+  }
+
+  function savedHtml() {
+    if (!state.saved.length) return '';
+    return `<h3 class="saved-h">${t('save.heading', { n: state.saved.length })}</h3>
+      <ul class="saved">${state.saved.map((s, i) => `<li${s.id === viewing ? ' class="on"' : ''}><span>${t('save.label', { i: i + 1 })} <span class="muted">${t('save.gap', { n: Math.round(s.result.stats.spread) })}</span></span>
+        <span><button class="link" data-act="viewsaved" data-s="${s.id}">${t('save.view')}</button><button class="link" data-act="delsaved" data-s="${s.id}">${t('save.remove')}</button></span></li>`).join('')}</ul>`;
   }
 
   const VERDICT = { good: 'verdict.good', ok: 'verdict.ok', bad: 'verdict.bad' };
@@ -426,6 +435,18 @@
         else if (i >= 0) list.splice(i, 1);
         else list.push(name);
         if (!list.length) delete p.roles[g.id];
+      } else if (act === 'saveresult') {
+        if (!result) return;
+        const id = newId('s');
+        state.saved.push({ id, result: JSON.parse(JSON.stringify(result)) });
+        viewing = id;
+      } else if (act === 'viewsaved') {
+        const s = state.saved.find((x) => x.id === el.dataset.s);
+        if (!s) return;
+        result = JSON.parse(JSON.stringify(s.result)); viewing = s.id; error = '';
+      } else if (act === 'delsaved') {
+        state.saved = state.saved.filter((x) => x.id !== el.dataset.s);
+        if (viewing === el.dataset.s) viewing = null;
       } else if (act === 'export') { exportPlayers(); return; }
       else if (act === 'import') { document.getElementById('import-file').click(); return; }
       else if (act === 'clear') { if (!window.confirm(C.plain('players.clearConfirm'))) return; state.players = []; }
@@ -438,7 +459,7 @@
           state.players.push({ id: newId('p'), name, ratings, roles: rl, plays });
         });
       } else if (act === 'generate') {
-        state.seed += 1;
+        state.seed += 1; viewing = null;
         try {
           ({ result, analysis } = T.planTeams(state.players, { games: state.games, wide: state.wide, teams: state.teams, autoTeams: state.autoTeams, cover: state.coverAll, roleWeight: state.roleWeight, seed: state.seed }));
           error = '';

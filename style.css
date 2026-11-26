@@ -181,3 +181,8 @@ button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
 .rangewrap input[type=range] { width: 100%; display: block; margin: 0; }
 .ticks { display: flex; justify-content: space-between; padding: 0 8px; margin-top: 2px; pointer-events: none; }
 .ticks i { width: 1.5px; height: 6px; background: var(--muted); opacity: .55; border-radius: 1px; }
+
+.saved-h { margin: 24px 0 8px; }
+.saved { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.saved li { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card, #fff); border: 1px solid var(--line); border-radius: 6px; }
+.saved li.on { border-color: var(--accent, #3d6fc4); }
