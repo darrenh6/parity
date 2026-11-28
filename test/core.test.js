@@ -382,3 +382,19 @@ test('counts the ways to split players into unlabeled teams', () => {
   assert.strictEqual(T.countSplits(6, 3), 15n);
   assert.strictEqual(T.countSplits(7, 2), 35n);
 });
+
+test('a player who shares a spot in one game gets a full spot in their other games', () => {
+  const o = (name, role, plays) => ({ name, ratings: {}, roles: { ow: [role] }, plays });
+  const lolP = (name, role) => ({ name, ratings: {}, roles: { lol: [role] }, plays: { ow: false, val: false } });
+  const team = [
+    { name: 'Y', ratings: {}, roles: { ow: ['Tank'] }, plays: { lol: false } },
+    lolP('a', 'Top'), lolP('b', 'Jungle'), lolP('c', 'Mid'), lolP('d', 'Bot'), lolP('e', 'Support'),
+    { name: 'X', ratings: {}, roles: { lol: ['Top'], ow: ['Tank'] }, plays: { val: false } },
+    o('d1', 'DPS', { lol: false, val: false }), o('d2', 'DPS', { lol: false, val: false }),
+    o('s1', 'Support', { lol: false, val: false }), o('s2', 'Support', { lol: false, val: false }),
+  ];
+  const { lineups } = T.assignJoint(team, games.slice(0, 2), games, () => null, false);
+  assert.ok(lineups[0].subs.some((s) => s.player.name === 'X' || s.sub.name === 'X'));
+  assert.ok(lineups[1].assigned.some((x) => x.player.name === 'X'));
+  assert.ok(!lineups[1].subs.some((s) => s.player.name === 'X' || s.sub.name === 'X'));
+});
